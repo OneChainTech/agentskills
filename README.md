@@ -2,6 +2,13 @@
 
 ## 安装gemini
 npx https://github.com/google-gemini/gemini-cli 
+安全安装
+npm install -g @google/gemini-cli
+gemini
+
+## 安装claude code
+curl -fsSL https://claude.ai/install.sh | bash
+claude
 
 ## 安装openskills
 全局安装命令：
