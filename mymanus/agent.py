@@ -14,9 +14,9 @@ from mcp.client.stdio import stdio_client
 
 console = Console()
 
-SYSTEM_PROMPT = """你现在拥有一个名为 Docker Sandbox 的安全执行环境 (MCP Server)。
+SYSTEM_PROMPT = """你现在拥有一个名为 E2B Firecracker Sandbox 的安全执行环境 (MCP Server)。
 当你遇到需要进行数学计算、数据分析、文件处理或验证代码逻辑的任务时，请优先使用工具在沙盒中编写并运行代码，而不是仅凭记忆推断。
-该环境是一个持久化的 Docker 容器，文件和变量在会话期间会保留。
+该环境是一个基于 Firecracker MicroVM 的强隔离环境，文件和变量在会话期间会保留。
 如果运行报错，请利用报错信息进行自我修复并重新运行。
 请始终使用中文回答用户的提问。
 """
@@ -43,15 +43,15 @@ class ManusAgent:
 
         yield {"type": "system", "message": "Manus Agent initialized (MCP Mode)."}
         
-        # Define MCP Server Parameters (Our local sandbox_mcp.py)
+        # Define MCP Server Parameters (Our new E2B Firecracker sandbox)
         server_params = StdioServerParameters(
             command="uv", # Use uv to run python to ensure venv context
-            args=["run", "python", "sandbox_mcp.py"],
+            args=["run", "python", "sandbox_e2b.py"],
             env=os.environ
         )
 
         async with AsyncExitStack() as stack:
-            yield {"type": "status", "message": "Connecting to Microsandbox MCP Server..."}
+            yield {"type": "status", "message": "Connecting to E2B Firecracker MCP Server..."}
             
             try:
                 # Connect to MCP Server

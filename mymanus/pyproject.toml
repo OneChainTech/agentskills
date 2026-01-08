@@ -11,4 +11,5 @@ dependencies = [
     "rich>=14.2.0",
     "uvicorn>=0.40.0",
     "python-dotenv>=1.0.0",
+    "e2b-code-interpreter>=0.0.10",
 ]
