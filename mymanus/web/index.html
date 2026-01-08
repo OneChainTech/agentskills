@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manus Web Console</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        primary: {
+                            DEFAULT: '#3B82F6',
+                            hover: '#2563EB',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom Scrollbar for Terminal */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+        
+        .typing-cursor::after {
+            content: '▋';
+            animation: blink 1s step-start infinite;
+            color: #3B82F6;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white">
+
+    <!-- Left Panel: Input & Controls -->
+    <aside class="w-1/3 min-w-[320px] flex flex-col border-r border-slate-700 bg-slate-900 z-10 shadow-xl">
+        
+        <!-- Header -->
+        <header class="h-16 flex items-center px-6 border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-white">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                    </svg>
+                </div>
+                <h1 class="font-semibold text-lg tracking-tight text-white">Manus Agent</h1>
+            </div>
+            <div class="ml-auto">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Online
+                </span>
+            </div>
+        </header>
+
+        <!-- Form Area -->
+        <main class="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
+            
+            <div class="space-y-4">
+                <label for="taskInput" class="block text-sm font-medium text-slate-400">
+                    Task Description
+                </label>
+                <div class="relative group">
+                    <textarea 
+                        id="taskInput" 
+                        class="w-full h-64 bg-slate-800 border border-slate-700 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none font-mono leading-relaxed"
+                        placeholder="Describe your task here...&#10;Example: Write a Python script to calculate the Fibonacci sequence."
+                        spellcheck="false"
+                    ></textarea>
+                    <!-- Decorative focus glow -->
+                    <div class="absolute inset-0 rounded-xl bg-blue-500/5 opacity-0 group-focus-within:opacity-100 pointer-events-none transition-opacity duration-300"></div>
+                </div>
+                <p class="text-xs text-slate-500 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    Manus executes code in a secure Microsandbox environment.
+                </p>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="mt-auto">
+                <button 
+                    id="runBtn"
+                    class="w-full group relative flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-medium py-3 px-4 rounded-xl shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+                >
+                    <!-- Button Glow Effect -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:translate-x-0.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                    </svg>
+                    <span>Run Task</span>
+                </button>
+            </div>
+
+        </main>
+        
+        <!-- Footer Info -->
+        <footer class="p-4 border-t border-slate-700 text-xs text-slate-500 text-center">
+            Powered by DeepSeek V3 & Microsandbox
+        </footer>
+    </aside>
+
+    <!-- Right Panel: Terminal / Logs -->
+    <section class="flex-1 bg-[#020617] relative flex flex-col min-w-0">
+        
+        <!-- Terminal Header -->
+        <div class="h-10 bg-slate-800/50 flex items-center px-4 border-b border-slate-800 justify-between select-none">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-mono text-slate-400">console://microsandbox/session-1</span>
+            </div>
+            <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-600"></div>
+            </div>
+        </div>
+
+        <!-- Terminal Content -->
+        <div id="terminalOutput" class="flex-1 overflow-y-auto p-6 font-mono text-sm leading-relaxed terminal-scroll">
+            
+            <!-- Welcome Message -->
+            <div class="text-slate-400 mb-4">
+                <p>Welcome to Manus Web Console v1.0</p>
+                <p>Connected to Manus Agent API.</p>
+                <p class="text-slate-500 mt-2">Ready to execute tasks.</p>
+            </div>
+            
+            <!-- Dynamic Content Container -->
+            <div id="logs" class="space-y-1"></div>
+            
+            <!-- Cursor Line -->
+            <div class="mt-2 text-blue-500 font-bold typing-cursor inline-block">&nbsp;</div>
+
+        </div>
+
+    </section>
+
+    <!-- Interactive Script -->
+    <script>
+        const runBtn = document.getElementById('runBtn');
+        const taskInput = document.getElementById('taskInput');
+        const logsContainer = document.getElementById('logs');
+        const terminalOutput = document.getElementById('terminalOutput');
+
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+        function createLogLine(text, type = 'info') {
+            const div = document.createElement('div');
+            
+            let colorClass = 'text-slate-300';
+            if (type === 'error') colorClass = 'text-red-400';
+            if (type === 'success') colorClass = 'text-green-400';
+            if (type === 'system') colorClass = 'text-blue-400';
+            if (type === 'dim') colorClass = 'text-slate-500';
+
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            div.innerHTML = `<span class="text-slate-600 select-none mr-3">[${timestamp}]</span><span class="${colorClass}">${text}</span>`;
+            return div;
+        }
+
+        async function appendLog(text, type = 'info') {
+            const line = createLogLine(text, type);
+            logsContainer.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        async function handleEvent(event) {
+            switch(event.type) {
+                case 'system':
+                    await appendLog(event.message, 'dim');
+                    break;
+                case 'status':
+                    await appendLog(event.message, 'system');
+                    break;
+                case 'code':
+                    await appendLog('Generated Python Code:', 'info');
+                    const codeBlock = document.createElement('div');
+                    codeBlock.className = 'my-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-xs font-mono text-blue-200 whitespace-pre overflow-x-auto';
+                    codeBlock.textContent = event.content;
+                    logsContainer.appendChild(codeBlock);
+                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                    break;
+                case 'output':
+                    await appendLog('Execution Result:', 'success');
+                    const outBlock = document.createElement('div');
+                    outBlock.className = 'my-4 p-4 bg-black border border-green-900/30 rounded-lg text-xs font-mono text-green-300 whitespace-pre overflow-x-auto shadow-inner';
+                    outBlock.textContent = event.content;
+                    logsContainer.appendChild(outBlock);
+                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                    break;
+                case 'answer':
+                    await appendLog('Agent Response:', 'success');
+                    const answerBlock = document.createElement('div');
+                    answerBlock.className = 'my-4 p-4 bg-slate-800 border border-blue-500/30 rounded-lg text-sm font-sans text-slate-200 whitespace-pre-wrap shadow-sm';
+                    answerBlock.textContent = event.content;
+                    logsContainer.appendChild(answerBlock);
+                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                    break;
+                case 'success':
+                    await appendLog(event.message, 'success');
+                    break;
+                case 'error':
+                    await appendLog(event.message, 'error');
+                    break;
+            }
+        }
+
+        runBtn.addEventListener('click', async () => {
+            console.log("Run button clicked");
+            const task = taskInput.value.trim();
+            if (!task) {
+                console.warn("Empty task input");
+                taskInput.focus();
+                taskInput.classList.add('ring-2', 'ring-red-500');
+                setTimeout(() => taskInput.classList.remove('ring-2', 'ring-red-500'), 500);
+                return;
+            }
+
+            // Disable UI
+            runBtn.disabled = true;
+            const originalBtnContent = runBtn.innerHTML;
+            runBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+            `;
+
+            logsContainer.innerHTML = ''; // Clear previous logs
+            
+            try {
+                await appendLog(`Received task: "${task}"`, 'system');
+                console.log("Sending request to /api/run");
+
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); 
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const event = JSON.parse(line);
+                            await handleEvent(event);
+                        } catch (e) {
+                            console.error("JSON Parse error:", line, e);
+                        }
+                    }
+                }
+                
+            } catch (e) {
+                console.error("Execution error:", e);
+                await appendLog(`Error: ${e.message}`, 'error');
+                alert(`Error: ${e.message}`); // Fallback alert
+            } finally {
+                // Reset UI
+                runBtn.disabled = false;
+                runBtn.innerHTML = originalBtnContent;
+            }
+        });
+    </script>
+</body>
+</html>

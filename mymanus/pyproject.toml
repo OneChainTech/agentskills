@@ -1,0 +1,14 @@
+[project]
+name = "mymanus"
+version = "0.1.0"
+description = "A Python coding agent powered by DeepSeek and Docker Sandbox."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.128.0",
+    "mcp>=1.25.0",
+    "openai>=2.14.0",
+    "rich>=14.2.0",
+    "uvicorn>=0.40.0",
+    "python-dotenv>=1.0.0",
+]
