@@ -2,7 +2,11 @@ from mcp.server.fastmcp import FastMCP
 from e2b_code_interpreter import AsyncSandbox
 import asyncio
 import os
+import logging
 from dotenv import load_dotenv
+
+# Configure logging to stderr to avoid interfering with MCP stdout
+logging.basicConfig(level=logging.ERROR)
 
 # Load env to ensure E2B_API_KEY is available
 load_dotenv()
@@ -98,10 +102,85 @@ async def restart_sandbox() -> str:
     global GLOBAL_SANDBOX
     if GLOBAL_SANDBOX:
         try:
-            GLOBAL_SANDBOX.close()
+            await GLOBAL_SANDBOX.kill()
         except: pass
         GLOBAL_SANDBOX = None
-    return "E2B Sandbox restarted (old instance closed)."
+    return "E2B Sandbox restarted (old instance killed)."
+
+@mcp.tool()
+async def list_files(path: str = ".") -> str:
+    """List files in the directory."""
+    try:
+        sb = await get_or_create_sandbox()
+        files = await sb.files.list(path)
+        return "\n".join([f"{f.name} ({f.type})" for f in files])
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def read_file(path: str) -> str:
+    """Read a file as text."""
+    try:
+        sb = await get_or_create_sandbox()
+        return await sb.files.read(path)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def visualize_file(path: str) -> str:
+    """
+    Read a file and return it as a visualization event for the user.
+    Use this for HTML, Images, or other visual artifacts.
+    Returns a JSON string identifying the content.
+    """
+    try:
+        sb = await get_or_create_sandbox()
+        
+        # Determine MIME type based on extension
+        ext = path.split('.')[-1].lower() if '.' in path else 'txt'
+        mime = "text/plain"
+        if ext == "html": mime = "text/html"
+        elif ext == "png": mime = "image/png"
+        elif ext == "jpg" or ext == "jpeg": mime = "image/jpeg"
+        elif ext == "svg": mime = "image/svg+xml"
+        elif ext == "json": mime = "application/json"
+        elif ext == "md": mime = "text/markdown"
+        
+        content = ""
+        is_binary = mime.startswith("image/")
+        
+        if is_binary:
+            # Use shell to get base64 for images
+            # -w 0 is important to avoid newlines in base64 output on Linux (alpine base64 usually behaves differently, so we strip manually)
+            cmd = f"cat {path} | base64"
+            exec_result = await sb.commands.run(cmd)
+            if exec_result.exit_code != 0:
+                return f"Error reading binary file: {exec_result.stderr}"
+            # STRICTLY REMOVE NEWLINES to prevent JSON parse errors
+            content = exec_result.stdout.replace("\n", "").replace("\r", "").strip()
+        else:
+            content = await sb.files.read(path)
+            
+        import json
+        return json.dumps({
+            "type": "file_preview",
+            "path": path,
+            "mime": mime,
+            "content": content
+        })
+        
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def get_public_url(port: int) -> str:
+    """Get a public URL for a port exposed in the sandbox."""
+    try:
+        sb = await get_or_create_sandbox()
+        host = sb.get_host(port)
+        return f"https://{host}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 if __name__ == "__main__":
     mcp.run()

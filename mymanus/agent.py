@@ -19,6 +19,10 @@ SYSTEM_PROMPT = """你现在拥有一个名为 E2B Firecracker Sandbox 的安全
 该环境是一个基于 Firecracker MicroVM 的强隔离环境，文件和变量在会话期间会保留。
 如果运行报错，请利用报错信息进行自我修复并重新运行。
 请始终使用中文回答用户的提问。
+
+你还有以下特殊能力：
+1. `visualize_file(path)`: 当你生成了 HTML、图片或其他可视化文件时，请调用此工具将其展示给用户。不要直接读取文件内容输出到对话中。
+2. `get_public_url(port)`: 如果你启动了一个 Web 服务（如 Streamlit, Flask），调用此工具获取外部访问链接，并展示给用户。
 """
 
 class ManusAgent:
@@ -46,7 +50,7 @@ class ManusAgent:
         # Define MCP Server Parameters (Our new E2B Firecracker sandbox)
         server_params = StdioServerParameters(
             command="uv", # Use uv to run python to ensure venv context
-            args=["run", "python", "sandbox_e2b.py"],
+            args=["run", "-q", "python", "sandbox_e2b.py"],
             env=os.environ
         )
 
@@ -132,6 +136,31 @@ class ManusAgent:
                             
                             if not output_text:
                                 output_text = "(No output)"
+
+                            # SPECIAL HANDLING FOR VISUALIZATION
+                            if tool_call.function.name == "visualize_file":
+                                try:
+                                    # DEBUG: Log the raw output length and snippet to confirm data reception
+                                    preview_snippet = output_text[:100] + "..." if len(output_text) > 100 else output_text
+                                    yield {"type": "status", "message": f"DEBUG: Tool returned {len(output_text)} chars. Snippet: {preview_snippet}"}
+                                    
+                                    data = json.loads(output_text)
+                                    if data.get("type") == "file_preview":
+                                        # Yield preview event for frontend
+                                        yield {"type": "preview", "mime": data["mime"], "content": data["content"], "path": data["path"]}
+                                        # Replace output text for LLM history so it doesn't get flooded with base64/html
+                                        output_text = f"(File '{data['path']}' sent to user preview. Content length: {len(data['content'])})"
+                                    else:
+                                        yield {"type": "status", "message": f"visualize_file returned unknown JSON structure."}
+                                except json.JSONDecodeError as e:
+                                    yield {"type": "error", "message": f"JSON Parse Error: {str(e)}. Raw output might contain invalid chars."}
+                                except Exception as e:
+                                    yield {"type": "error", "message": f"Error processing visualization: {str(e)}"}
+                                    
+                            # SPECIAL HANDLING FOR PUBLIC URL
+                            if tool_call.function.name == "get_public_url":
+                                if output_text.startswith("https://"):
+                                     yield {"type": "preview", "mime": "url", "content": output_text, "path": "Exposed Port"}
 
                             yield {"type": "output", "content": output_text}
 
