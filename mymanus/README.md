@@ -1,28 +1,25 @@
 # MyManus
 
-A Python coding agent powered by DeepSeek and Docker Sandbox.
+A Python coding agent powered by DeepSeek and E2B Firecracker Sandbox.
 
 ## Features
 
 - **Autonomous Coding:** Generates and executes Python code based on user prompts.
-- **Sandboxed Execution:** Runs code safely inside a persistent **Docker** container.
+- **Secure Sandboxing:** Runs code inside secure, ephemeral **E2B Firecracker MicroVMs**.
 - **Stateful Environment:** Variables and files are preserved throughout the session.
-- **Web Interface:** Includes a modern, terminal-style web console with real-time streaming feedback.
+- **Web Interface:** Includes a modern, terminal-style web console with real-time streaming feedback and file previews.
 - **CLI Mode:** Offers a rich command-line interface for direct interaction.
 
 ## Prerequisites
 
 1.  **Python 3.12+**
-2.  **Docker** (Desktop or OrbStack) must be installed and running.
-3.  **Local Image:** Ensure you have the `python:3.10.17-alpine3.21` image (or update `sandbox_mcp.py` to use another image present locally).
-    ```bash
-    # Verify image presence
-    docker images python:3.10.17-alpine3.21
-    ```
+2.  **E2B API Key**: Get one at [e2b.dev](https://e2b.dev).
+3.  **DeepSeek API Key**: Or compatible OpenAI-format provider.
 
 ## Setup
 
 1.  **Clone/Download the project.**
+
 2.  **Environment Variables:**
     Create a `.env` file in the `mymanus` directory:
     ```bash
@@ -33,7 +30,9 @@ A Python coding agent powered by DeepSeek and Docker Sandbox.
     DEEPSEEK_API_KEY=sk-your-key
     DEEPSEEK_BASE_URL=https://api.siliconflow.cn/v1
     MODEL_ID=deepseek-ai/DeepSeek-V3
+    E2B_API_KEY=e2b_...
     ```
+
 3.  **Install Dependencies:**
     Using `uv` (recommended):
     ```bash
@@ -60,12 +59,12 @@ To launch the full-featured web interface:
     ```
 2.  Open your browser at [http://localhost:8000](http://localhost:8000).
 
-    The web interface provides real-time streaming logs of the agent's thought process and execution results.
+    The web interface provides real-time streaming logs of the agent's thought process, execution results, and visualizations.
 
 ## Project Structure
 
 - `agent.py`: Core ManusAgent logic (LLM interaction).
-- `sandbox_mcp.py`: **Docker-based MCP Server**. Handles container lifecycle and command execution.
+- `sandbox_e2b.py`: **E2B-based MCP Server**. Handles remote sandbox lifecycle and command execution.
 - `server.py`: FastAPI backend server.
 - `main.py`: CLI entry point.
 - `web/`: Frontend assets.

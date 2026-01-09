@@ -127,6 +127,44 @@ async def read_file(path: str) -> str:
         return f"Error: {str(e)}"
 
 @mcp.tool()
+async def write_file(path: str, content: str) -> str:
+    """
+    Write content to a file in the sandbox.
+    Overwrites the file if it exists.
+    """
+    try:
+        sb = await get_or_create_sandbox()
+        # e2b write handles creating the file
+        await sb.files.write(path, content)
+        return f"File '{path}' written successfully."
+    except Exception as e:
+        return f"Error writing file: {str(e)}"
+
+@mcp.tool()
+async def install_package(package_name: str) -> str:
+    """
+    Install a Python package using pip in the sandbox.
+    """
+    try:
+        sb = await get_or_create_sandbox()
+        # Use pip via shell command for reliability
+        exec_result = await sb.commands.run(f"pip install {package_name}")
+        
+        output = []
+        if exec_result.stdout:
+            output.append(f"STDOUT:\n{exec_result.stdout}")
+        if exec_result.stderr:
+            output.append(f"STDERR:\n{exec_result.stderr}")
+            
+        if exec_result.exit_code != 0:
+            output.append(f"Exit Code: {exec_result.exit_code}")
+            
+        return "\n".join(output) if output else "(Package installed successfully)"
+
+    except Exception as e:
+        return f"Error installing package: {str(e)}"
+
+@mcp.tool()
 async def visualize_file(path: str) -> str:
     """
     Read a file and return it as a visualization event for the user.
