@@ -14,18 +14,24 @@
                 extend: {
                     colors: {
                         slate: {
-                            850: '#1e293b',
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            850: '#172033', // Custom
                             900: '#0f172a',
                             950: '#020617',
                         },
                         primary: {
                             DEFAULT: '#3B82F6',
                             hover: '#2563EB',
+                            light: '#60A5FA',
                             glow: 'rgba(59, 130, 246, 0.5)'
-                        },
-                        ai: {
-                            DEFAULT: '#8B5CF6', // Violet for AI accents
-                            dim: 'rgba(139, 92, 246, 0.1)'
                         }
                     },
                     fontFamily: {
@@ -52,7 +58,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
         /* Custom Scrollbar */
@@ -64,11 +70,17 @@
             background: transparent; 
         }
         ::-webkit-scrollbar-thumb {
-            background: #334155; 
+            background: #cbd5e1; /* Light mode thumb */
             border-radius: 3px;
         }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155; /* Dark mode thumb */
+        }
         ::-webkit-scrollbar-thumb:hover {
-            background: #475569; 
+            background: #94a3b8; 
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
         }
         
         .typing-cursor::after {
@@ -82,21 +94,43 @@
             50% { opacity: 0; }
         }
 
+        /* Tab Styles */
+        .tab-active {
+            color: #0f172a; /* slate-900 */
+        }
+        .dark .tab-active {
+            color: #ffffff;
+        }
+        .tab-inactive {
+            color: #64748b; /* slate-500 */
+        }
+        .dark .tab-inactive {
+            color: #94a3b8; /* slate-400 */
+        }
+
         /* Glassmorphism Utilities */
         .glass {
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .glass-panel {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass-panel {
             background: rgba(30, 41, 59, 0.4);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white transition-colors duration-300">
 
     <!-- Ambient Background -->
     <div class="fixed inset-0 pointer-events-none overflow-hidden">
@@ -106,25 +140,38 @@
     </div>
 
     <!-- Left Panel: Input & Controls -->
-    <aside class="w-[400px] flex flex-col border-r border-white/5 glass z-20 shadow-2xl relative">
+    <aside class="w-[400px] flex flex-col border-r border-slate-200 dark:border-white/5 glass z-20 shadow-2xl relative transition-colors duration-300">
         
         <!-- Header -->
-        <header class="h-16 flex items-center px-6 border-b border-white/5 bg-slate-900/50">
+        <header class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/10">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-white">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
                     </svg>
                 </div>
-                <h1 class="font-semibold text-lg tracking-tight text-white/90">Manus<span class="text-blue-400">Agent</span></h1>
+                <h1 class="font-semibold text-lg tracking-tight text-slate-800 dark:text-white/90">Manus<span class="text-blue-500 dark:text-blue-400">Agent</span></h1>
             </div>
-            <div class="ml-auto">
+            
+            <div class="ml-auto flex items-center gap-3">
+                 <!-- Theme Toggle -->
+                 <button id="themeToggle" class="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors focus:outline-none">
+                    <!-- Sun Icon (Hidden in Dark) -->
+                    <svg id="sunIcon" class="w-4 h-4 hidden dark:block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                    </svg>
+                    <!-- Moon Icon (Hidden in Light) -->
+                    <svg id="moonIcon" class="w-4 h-4 block dark:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                </button>
+
                 <div class="flex items-center gap-2 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
                     <div class="relative flex h-2 w-2">
                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                     </div>
-                    <span class="text-[10px] font-medium text-green-400 tracking-wide uppercase">Online</span>
+                    <span class="text-[10px] font-medium text-green-600 dark:text-green-400 tracking-wide uppercase">Online</span>
                 </div>
             </div>
         </header>
@@ -133,53 +180,98 @@
         <main class="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
             
             <div class="space-y-3 flex-1 flex flex-col">
-                <label for="taskInput" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider pl-1">
-                    Mission Control
+                <label for="taskInput" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                    Mission
                 </label>
                 <div class="relative group flex-1">
                     <textarea 
                         id="taskInput" 
-                        class="w-full h-full min-h-[200px] bg-slate-900/50 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-inner"
-                        placeholder="Initialize task sequence...&#10;&#10;Examples:&#10;> Analyze crypto prices via API&#10;> Generate a Mandelbrot set visualization&#10;> Scrape and summarize tech news"
+                        class="w-full h-full min-h-[150px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
+                        placeholder="Initialize task sequence...&#10;&#10;Describe your goal clearly. I can run code, visualize data, and explore the web."
                         spellcheck="false"
                     ></textarea>
-                    
-                    <!-- Decorative corner accents -->
-                    <div class="absolute top-0 left-0 w-2 h-2 border-t border-l border-white/20 rounded-tl-xl pointer-events-none"></div>
-                    <div class="absolute top-0 right-0 w-2 h-2 border-t border-r border-white/20 rounded-tr-xl pointer-events-none"></div>
-                    <div class="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-white/20 rounded-bl-xl pointer-events-none"></div>
-                    <div class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-white/20 rounded-br-xl pointer-events-none"></div>
+                </div>
+            </div>
+
+            <!-- Quick Start Examples -->
+            <div class="space-y-3">
+                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                    Quick Start
+                </label>
+                <div class="grid grid-cols-1 gap-2">
+                    <!-- Type 1: Data Return -->
+                    <button onclick="setTask('Calculate the first 15 Fibonacci numbers and present them in a structured Markdown table.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
+                        <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7-4h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">Data Processing</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Generate structured tables</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Type 2: Chart/Image Return -->
+                    <button onclick="setTask('Plot a sine wave using Python (Matplotlib) and save it as \'sine_wave.png\'.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">Visualization</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Create & render charts</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Type 3: Links/Connection Return -->
+                    <button onclick="setTask('Search for the official documentation of \'LangChain\' and \'DeepSeek\'. Provide the direct links.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">Research & Links</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Find & return URLs</div>
+                            </div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
             <!-- Environment Info -->
-            <div class="p-4 rounded-lg glass-panel text-xs space-y-2">
-                <div class="flex justify-between items-center text-slate-400">
+            <div class="p-4 rounded-lg glass-panel text-xs space-y-2 mt-auto hidden">
+                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/5 pb-2 mb-2">
+                    <span>Architecture</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">LangChain 1.0</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
                     <span>Environment</span>
-                    <span class="text-blue-400 font-mono">E2B Firecracker</span>
+                    <span class="text-blue-600 dark:text-blue-400 font-mono">E2B Firecracker</span>
                 </div>
-                <div class="flex justify-between items-center text-slate-400">
+                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
                     <span>Runtime</span>
-                    <span class="text-yellow-400 font-mono">Python 3.12</span>
+                    <span class="text-yellow-600 dark:text-yellow-400 font-mono">Python 3.12</span>
                 </div>
-                <div class="flex justify-between items-center text-slate-400">
+                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
                     <span>Model</span>
-                    <span class="text-purple-400 font-mono">DeepSeek V3</span>
+                    <span class="text-purple-600 dark:text-purple-400 font-mono">DeepSeek V3</span>
                 </div>
             </div>
 
             <!-- Action Bar -->
-            <div class="mt-auto pt-2">
+            <div class="pt-2">
                 <button 
                     id="runBtn"
-                    class="w-full group relative flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-medium py-3.5 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border border-white/10"
+                    class="w-full group relative flex items-center justify-center gap-2 bg-slate-900 dark:bg-primary hover:bg-slate-800 dark:hover:bg-primary-hover text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden border border-white/10"
                 >
-                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                     
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:rotate-90 duration-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:rotate-90 duration-500">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                     </svg>
-                    <span class="tracking-wide">Execute Protocol</span>
+                    <span class="tracking-widest uppercase text-xs">Execute</span>
                 </button>
             </div>
 
@@ -189,72 +281,88 @@
     <!-- Right Panel: Terminal / Preview -->
     <section class="flex-1 relative flex flex-col min-w-0 z-10">
         
-        <!-- Tabs Header -->
-        <div class="h-16 flex items-end px-4 border-b border-white/5 bg-slate-950/80">
+        <!-- Tabs Header (Swapped: Visualizer First) -->
+        <div class="h-16 flex items-end px-4 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-30">
             <div class="flex gap-1">
-                <button id="tabConsole" class="group relative px-6 py-2.5 text-sm font-medium text-white transition-colors">
-                    <span class="relative z-10 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        Terminal
-                    </span>
-                    <div id="tabConsoleIndicator" class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                    <div class="absolute inset-0 bg-white/5 rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </button>
                 
-                <button id="tabPreview" class="group relative px-6 py-2.5 text-sm font-medium text-slate-400 hover:text-white transition-colors">
+                <!-- Preview Tab (Default Active) -->
+                <button id="tabPreview" class="group relative px-6 py-2.5 text-sm font-medium tab-active transition-colors">
                     <span class="relative z-10 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <svg class="w-4 h-4 text-purple-500 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         Visualizer
                     </span>
-                    <div id="tabPreviewIndicator" class="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] hidden"></div>
-                    <div class="absolute inset-0 bg-white/5 rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <!-- Active Indicator (Visible by default) -->
+                    <div id="tabPreviewIndicator" class="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
+                    <div class="absolute inset-0 bg-slate-100 dark:bg-white/5 rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </button>
+
+                <!-- Console Tab -->
+                <button id="tabConsole" class="group relative px-6 py-2.5 text-sm font-medium tab-inactive hover:tab-active transition-colors">
+                    <span class="relative z-10 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        Terminal
+                    </span>
+                    <div id="tabConsoleIndicator" class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] hidden"></div>
+                    <div class="absolute inset-0 bg-slate-100 dark:bg-white/5 rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </button>
+
             </div>
         </div>
 
-        <!-- Console View -->
-        <div id="consoleView" class="flex-1 flex flex-col overflow-hidden relative bg-[#0B0F19]">
-            <!-- Decorative Grid -->
-            <div class="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+        <!-- Content Area -->
+        <div class="flex-1 relative overflow-hidden bg-slate-100 dark:bg-[#0B0F19]">
             
-            <div id="terminalOutput" class="flex-1 overflow-y-auto p-8 font-mono text-[13px] leading-relaxed relative z-10">
-                 <div class="text-slate-500 mb-6 border-b border-white/5 pb-4">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-blue-500">➜</span>
-                        <span class="text-slate-300">init_session</span>
-                        <span class="text-slate-600">--environment=e2b-firecracker</span>
+            <!-- Console View (Hidden by default) -->
+            <div id="consoleView" class="absolute inset-0 flex flex-col hidden bg-white dark:bg-[#0B0F19]">
+                 <!-- Decorative Grid -->
+                <div class="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
+                
+                <div id="terminalOutput" class="flex-1 overflow-y-auto p-8 font-mono text-[13px] leading-relaxed relative z-10">
+                     <div class="text-slate-500 dark:text-slate-500 mb-6 border-b border-slate-200 dark:border-white/5 pb-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-blue-500">➜</span>
+                            <span class="text-slate-700 dark:text-slate-300">init_session</span>
+                            <span class="text-slate-400 dark:text-slate-600">--environment=e2b-firecracker</span>
+                        </div>
+                        <p class="pl-5 opacity-70">Manus Agent initialized. Sandbox ready. Waiting for input...</p>
                     </div>
-                    <p class="pl-5 opacity-70">Manus Agent initialized. Sandbox ready. Waiting for input...</p>
+                    <div id="logs" class="space-y-3 pl-2 border-l-2 border-slate-200 dark:border-white/5"></div>
+                    <div class="mt-4 pl-5 text-blue-500 font-bold typing-cursor inline-block">&nbsp;</div>
                 </div>
-                <div id="logs" class="space-y-3 pl-2 border-l-2 border-white/5"></div>
-                <div class="mt-4 pl-5 text-blue-500 font-bold typing-cursor inline-block">&nbsp;</div>
             </div>
-        </div>
 
-        <!-- Preview View -->
-        <div id="previewView" class="hidden flex-1 flex-col bg-white relative overflow-hidden">
-             <iframe id="previewFrame" class="w-full h-full border-none hidden z-10 relative"></iframe>
-             <div id="previewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 gap-4">
-                <div class="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center shadow-inner">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-10 h-10 text-slate-300">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                </div>
-                <div class="text-center space-y-1">
-                    <p class="text-slate-900 font-medium">No Active Visualization</p>
-                    <p class="text-slate-500 text-sm">Generated files and images will appear here.</p>
-                </div>
-             </div>
-        </div>
+            <!-- Preview View (Visible by default) -->
+            <div id="previewView" class="absolute inset-0 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+                 <iframe id="previewFrame" class="w-full h-full border-none hidden z-10 relative"></iframe>
+                 
+                 <!-- Empty State Placeholder -->
+                 <div id="previewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 gap-4">
+                    <div class="w-24 h-24 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" class="w-10 h-10 text-slate-400 dark:text-slate-500">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                    </div>
+                    <div class="text-center space-y-1">
+                        <p class="text-slate-900 dark:text-slate-200 font-medium">Ready to Visualize</p>
+                        <p class="text-slate-500 dark:text-slate-500 text-sm">Execute a task to see the workflow and results here.</p>
+                    </div>
+                 </div>
+                 
+                 <!-- Workflow Container (Dynamically populated) -->
+                 <div id="workflowContainer" class="w-full h-full overflow-y-auto p-6 space-y-6 hidden bg-slate-50 dark:bg-slate-900"></div>
+            </div>
 
+        </div>
     </section>
 
     <!-- Interactive Script -->
     <script>
+        // DOM Elements
         const runBtn = document.getElementById('runBtn');
         const taskInput = document.getElementById('taskInput');
         const logsContainer = document.getElementById('logs');
         const terminalOutput = document.getElementById('terminalOutput');
+        const themeToggle = document.getElementById('themeToggle');
         
         // Tab Elements
         const tabConsole = document.getElementById('tabConsole');
@@ -265,32 +373,61 @@
         const previewView = document.getElementById('previewView');
         const previewFrame = document.getElementById('previewFrame');
         const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const workflowContainer = document.getElementById('workflowContainer');
 
-        // Create Workflow Container
-        const workflowContainer = document.createElement('div');
-        workflowContainer.id = 'workflowContainer';
-        workflowContainer.className = 'w-full h-full overflow-y-auto p-6 space-y-6 hidden bg-slate-50 dark:bg-slate-900';
-        previewView.appendChild(workflowContainer);
+        // Theme Handling
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
 
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        });
+
+        // Helper: Set Task
+        window.setTask = (text) => {
+            taskInput.value = text;
+            taskInput.focus();
+            // Highlight effect
+            taskInput.classList.add('ring-2', 'ring-primary/50');
+            setTimeout(() => taskInput.classList.remove('ring-2', 'ring-primary/50'), 500);
+        };
+
+        // Tabs Logic
         function switchTab(tab) {
             if (tab === 'console') {
-                tabConsole.classList.add('text-white');
-                tabConsole.classList.remove('text-slate-400');
+                // Console Active
+                tabConsole.classList.add('tab-active');
+                tabConsole.classList.remove('tab-inactive');
                 tabConsoleIndicator.classList.remove('hidden');
                 
-                tabPreview.classList.add('text-slate-400');
-                tabPreview.classList.remove('text-white');
+                // Preview Inactive
+                tabPreview.classList.add('tab-inactive');
+                tabPreview.classList.remove('tab-active');
                 tabPreviewIndicator.classList.add('hidden');
 
                 consoleView.classList.remove('hidden');
                 previewView.classList.add('hidden');
             } else {
-                tabPreview.classList.add('text-white');
-                tabPreview.classList.remove('text-slate-400');
+                // Preview Active
+                tabPreview.classList.add('tab-active');
+                tabPreview.classList.remove('tab-inactive');
                 tabPreviewIndicator.classList.remove('hidden');
 
-                tabConsole.classList.add('text-slate-400');
-                tabConsole.classList.remove('text-white');
+                // Console Inactive
+                tabConsole.classList.add('tab-inactive');
+                tabConsole.classList.remove('tab-active');
                 tabConsoleIndicator.classList.add('hidden');
 
                 consoleView.classList.add('hidden');
@@ -303,30 +440,30 @@
 
         function createLogLine(text, type = 'info') {
             const div = document.createElement('div');
-            div.className = 'flex gap-3 group hover:bg-white/5 p-1 rounded transition-colors';
+            div.className = 'flex gap-3 group hover:bg-black/5 dark:hover:bg-white/5 p-1 rounded transition-colors';
             
-            let colorClass = 'text-slate-300';
+            let colorClass = 'text-slate-600 dark:text-slate-300';
             let icon = '•';
             
             if (type === 'error') {
-                colorClass = 'text-red-400';
+                colorClass = 'text-red-600 dark:text-red-400';
                 icon = '✖';
             } else if (type === 'success') {
-                colorClass = 'text-green-400';
+                colorClass = 'text-green-600 dark:text-green-400';
                 icon = '✔';
             } else if (type === 'system') {
-                colorClass = 'text-blue-400';
+                colorClass = 'text-blue-600 dark:text-blue-400';
                 icon = 'ℹ';
             } else if (type === 'dim') {
-                colorClass = 'text-slate-500 italic';
+                colorClass = 'text-slate-400 dark:text-slate-500 italic';
                 icon = '›';
             }
 
             const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
             
             div.innerHTML = `
-                <span class="text-slate-700 font-mono text-[11px] pt-0.5 select-none">${timestamp}</span>
-                <span class="text-slate-600 select-none">${icon}</span>
+                <span class="text-slate-400 dark:text-slate-700 font-mono text-[11px] pt-0.5 select-none">${timestamp}</span>
+                <span class="text-slate-400 dark:text-slate-600 select-none">${icon}</span>
                 <span class="${colorClass} flex-1 break-words">${text}</span>
             `;
             return div;
@@ -363,18 +500,16 @@
                     <div class="p-4 space-y-4 content-area"></div>
                 `;
                 workflowContainer.appendChild(el);
-                // Scroll to bottom of workflow
                 workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
             }
             return el.querySelector('.content-area');
         }
 
         function appendThought(content) {
-            if (!currentTurnDiv) return; // Should have been created by 'status' event
+            if (!currentTurnDiv) return;
             
             const div = document.createElement('div');
             div.className = 'prose dark:prose-invert prose-sm max-w-none text-slate-600 dark:text-slate-300 leading-relaxed';
-            // Simple markdown-ish parsing
             let html = content
                 .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-slate-100">$1</strong>')
                 .replace(/`(.*?)`/g, '<code class="bg-slate-100 dark:bg-slate-900 px-1 py-0.5 rounded text-pink-500 font-mono text-xs">$1</code>')
@@ -403,23 +538,22 @@
 
             div.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <span class="text-lg">${icon}</span>
+                    <span class="text-lg grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all">${icon}</span>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <span class="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">${toolName}</span>
+                            <span class="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-900/30">${toolName}</span>
                             <span class="text-xs text-slate-400 animate-pulse">Running...</span>
                         </div>
                     </div>
                 </div>
             `;
             
-            // If there's code/args, show it collapsed or small
             if (args && (args.code || args.command)) {
                 const code = args.code || args.command;
                 const codeBlock = document.createElement('div');
                 codeBlock.className = 'mt-2 pl-9';
                 codeBlock.innerHTML = `
-                    <div class="text-[10px] font-mono text-slate-500 bg-white dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800 overflow-x-auto">
+                    <div class="text-[10px] font-mono text-slate-500 bg-white dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800 overflow-x-auto shadow-sm">
                         ${code.substring(0, 150)}${code.length > 150 ? '...' : ''}
                     </div>
                 `;
@@ -427,18 +561,18 @@
             }
 
             currentTurnDiv.appendChild(div);
-            return div; // Return ref to update later
+            return div; 
         }
 
         function updateActionStatus(actionEl, success, result) {
             if (!actionEl) return;
             const statusSpan = actionEl.querySelector('.animate-pulse');
             if (statusSpan) {
-                statusSpan.className = `text-xs font-medium ${success ? 'text-green-500' : 'text-red-500'}`;
+                statusSpan.className = `text-xs font-medium ${success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`;
                 statusSpan.textContent = success ? 'Completed' : 'Failed';
+                statusSpan.classList.remove('animate-pulse');
             }
             
-            // Append result snippet
             const resultDiv = document.createElement('div');
             resultDiv.className = 'mt-2 pl-9 text-xs text-slate-500 dark:text-slate-400 font-mono border-l-2 border-slate-200 dark:border-slate-700 pl-2 ml-1';
             const shortResult = result.length > 200 ? result.substring(0, 200) + '...' : result;
@@ -456,7 +590,7 @@
                 case 'code': 
                     await appendLog('Generated Python Code:', 'system');
                     const codeBlock = document.createElement('div');
-                    codeBlock.className = 'ml-12 my-2 p-4 bg-[#0F131F] border border-blue-900/30 rounded-lg text-xs font-mono text-blue-200 whitespace-pre overflow-x-auto shadow-inner custom-scroll';
+                    codeBlock.className = 'ml-12 my-2 p-4 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-blue-200 whitespace-pre overflow-x-auto shadow-inner custom-scroll';
                     codeBlock.innerHTML = `<code class="language-python">${event.content}</code>`;
                     logsContainer.appendChild(codeBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
@@ -464,7 +598,7 @@
                 case 'output':
                     await appendLog('Execution Result:', 'success');
                     const outBlock = document.createElement('div');
-                    outBlock.className = 'ml-12 my-2 p-4 bg-black/50 border-l-2 border-green-500/50 rounded-r-lg text-xs font-mono text-green-300 whitespace-pre overflow-x-auto';
+                    outBlock.className = 'ml-12 my-2 p-4 bg-black/80 border-l-2 border-green-500/50 rounded-r-lg text-xs font-mono text-green-300 whitespace-pre overflow-x-auto';
                     outBlock.textContent = event.content;
                     logsContainer.appendChild(outBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
@@ -472,7 +606,7 @@
                 case 'answer':
                     await appendLog('Agent Answer:', 'success');
                     const answerBlock = document.createElement('div');
-                    answerBlock.className = 'ml-12 my-2 p-5 bg-slate-800/50 border border-slate-700 rounded-xl text-sm font-sans text-slate-200 whitespace-pre-wrap shadow-lg';
+                    answerBlock.className = 'ml-12 my-2 p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-sans text-slate-800 dark:text-slate-200 whitespace-pre-wrap shadow-sm';
                     answerBlock.textContent = event.content;
                     logsContainer.appendChild(answerBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
@@ -480,7 +614,7 @@
                     // Add to Workflow
                     if (currentTurnDiv) {
                         const div = document.createElement('div');
-                        div.className = 'mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 leading-relaxed';
+                        div.className = 'mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 leading-relaxed shadow-sm';
                         // Simple formatting
                         let html = event.content
                             .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-white">$1</strong>')
@@ -515,23 +649,12 @@
                 
                 if (event.message.startsWith('Calling tool:')) {
                     const toolName = event.message.split(':')[1].trim();
-                    // We don't have args here easily unless we parse, but wait for next event?
-                    // Actually agent.py sends 'code' event separately for code tools.
-                    // We'll create a placeholder action.
                     lastActionEl = appendAction(toolName, {});
                 }
             }
             
             if (event.type === 'thought') {
                 appendThought(event.content);
-            }
-
-            if (event.type === 'code') {
-                // Attach code to the last action if possible, or just update UI
-                if (lastActionEl) {
-                     // Update the code block inside lastActionEl if it was empty?
-                     // For now, simpler to just let it be.
-                }
             }
 
             if (event.type === 'output') {
@@ -568,7 +691,7 @@
                  // Add a Preview Card to the workflow
                  if (currentTurnDiv) {
                     const div = document.createElement('div');
-                    div.className = 'mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-black';
+                    div.className = 'mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-black shadow-sm';
                     
                     const header = document.createElement('div');
                     header.className = 'px-3 py-2 bg-slate-200 dark:bg-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400 flex justify-between';
@@ -577,7 +700,7 @@
 
                     const contentArea = document.createElement('div');
                     contentArea.className = 'relative';
-                    contentArea.style.height = '300px'; 
+                    contentArea.style.height = '400px'; // Taller preview
                     
                     const iframe = document.createElement('iframe');
                     iframe.className = 'w-full h-full border-none bg-white';
@@ -587,9 +710,9 @@
                     } else if (event.mime === 'text/html') {
                         iframe.srcdoc = event.content;
                     } else if (event.mime && event.mime.startsWith('image/')) {
-                        iframe.srcdoc = `
-                            <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f0f0;">
-                                <img src="data:${event.mime};base64,${event.content}" style="max-width:100%;max-height:100%;box-shadow:0 0 20px rgba(0,0,0,0.1);">
+                         iframe.srcdoc = `
+                            <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f8fafc;">
+                                <img src="data:${event.mime};base64,${event.content}" style="max-width:90%;max-height:90%;box-shadow:0 4px 6px -1px rgba(0, 0, 0, 0.1);border-radius:8px;">
                             </body>`;
                     } else {
                         iframe.srcdoc = `<pre style="padding:20px;white-space:pre-wrap;font-family:monospace;color:#333;font-size:12px;">${event.content}</pre>`;
@@ -616,7 +739,7 @@
                 return;
             }
 
-            // Reset
+            // Disable UI
             runBtn.disabled = true;
             const originalBtnContent = runBtn.innerHTML;
             runBtn.innerHTML = `
@@ -631,14 +754,14 @@
             workflowContainer.innerHTML = '';
             currentTurnDiv = null;
             lastActionEl = null;
+            
+            // Show Workflow container, hide placeholder
+            previewPlaceholder.classList.add('hidden');
+            workflowContainer.classList.remove('hidden');
 
-            // Default to preview tab for the "Rich Experience"
             switchTab('preview'); 
             
             try {
-                // Initial Turn
-                // currentTurnDiv = getOrCreateTurnDiv(1);
-                
                 const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

@@ -1,31 +1,41 @@
 # MyManus
 
-A Python coding agent powered by DeepSeek and E2B Firecracker Sandbox.
+A high-performance Python coding agent powered by **DeepSeek V3** and **E2B Firecracker MicroVMs**.
 
-## Features
+Manus is designed to be a "Code First" autonomous agent. It solves problems by writing and executing Python code in a secure, stateful sandbox, rather than just generating text.
 
-- **Autonomous Coding:** Generates and executes Python code based on user prompts.
-- **Secure Sandboxing:** Runs code inside secure, ephemeral **E2B Firecracker MicroVMs**.
-- **Stateful Environment:** Variables and files are preserved throughout the session.
-- **Web Interface:** Includes a modern, terminal-style web console with real-time streaming feedback and file previews.
-- **CLI Mode:** Offers a rich command-line interface for direct interaction.
+## 🌟 Features
 
-## Prerequisites
+*   **⚡️ LangChain 1.0 Architecture:** Built on the latest agentic frameworks for robust planning and execution.
+*   **🔒 Secure E2B Sandboxing:** Code runs inside isolated Firecracker MicroVMs. Files and variables persist throughout the session.
+*   **🧠 DeepSeek V3 Integration:** Leveraging state-of-the-art open models for complex reasoning and coding.
+*   **🖥️ Modern Web Console:** A beautiful, responsive UI with:
+    *   **Light/Dark Mode** support.
+    *   **Real-time Timeline** of the agent's thought process.
+    *   **Live Previews** for generated HTML, images, and data visualizations.
+    *   **Terminal** for raw log inspection.
+*   **🛠️ CLI Mode:** A rich command-line interface for quick tasks.
 
-1.  **Python 3.12+**
-2.  **E2B API Key**: Get one at [e2b.dev](https://e2b.dev).
-3.  **DeepSeek API Key**: Or compatible OpenAI-format provider.
+## 🚀 Prerequisites
 
-## Setup
+1.  **Python 3.12+** (Managed via `uv` is recommended)
+2.  **E2B API Key**: Get a free key at [e2b.dev](https://e2b.dev).
+3.  **DeepSeek API Key**: Or any OpenAI-compatible provider (e.g., SiliconFlow, Together AI).
 
-1.  **Clone/Download the project.**
+## 🛠️ Setup
 
-2.  **Environment Variables:**
-    Create a `.env` file in the `mymanus` directory:
+1.  **Clone the project:**
+    ```bash
+    git clone <repository-url>
+    cd mymanus
+    ```
+
+2.  **Configure Environment:**
+    Create a `.env` file from the example:
     ```bash
     cp .env.example .env
     ```
-    Edit `.env` and add your API keys:
+    Add your API keys:
     ```ini
     DEEPSEEK_API_KEY=sk-your-key
     DEEPSEEK_BASE_URL=https://api.siliconflow.cn/v1
@@ -34,37 +44,45 @@ A Python coding agent powered by DeepSeek and E2B Firecracker Sandbox.
     ```
 
 3.  **Install Dependencies:**
-    Using `uv` (recommended):
+    We recommend using `uv` for fast, reliable package management:
     ```bash
     uv sync
     ```
 
-## Usage
+## 🎮 Usage
 
-### CLI Mode (Command Line)
+### Web Console (Recommended)
 
-Run the agent directly in your terminal:
-
-```bash
-uv run main.py
-```
-
-### Web Console (UI)
-
-To launch the full-featured web interface:
+Experience the full visual capability of Manus.
 
 1.  Start the backend server:
     ```bash
     uv run server.py
     ```
-2.  Open your browser at [http://localhost:8000](http://localhost:8000).
+2.  Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+3.  Try a task like:
+    > "Analyze the Bitcoin price trend for the last 7 days and plot a chart."
 
-    The web interface provides real-time streaming logs of the agent's thought process, execution results, and visualizations.
+### CLI Mode
 
-## Project Structure
+For quick interactions in your terminal:
 
-- `agent.py`: Core ManusAgent logic (LLM interaction).
-- `sandbox_e2b.py`: **E2B-based MCP Server**. Handles remote sandbox lifecycle and command execution.
-- `server.py`: FastAPI backend server.
-- `main.py`: CLI entry point.
-- `web/`: Frontend assets.
+```bash
+uv run main.py
+```
+
+## 📂 Project Structure
+
+*   `agent.py`: Core logic for `ManusAgent`, handling the LLM loop and MCP tool execution.
+*   `sandbox_e2b.py`: An **MCP Server** implementation that bridges the agent to the E2B Firecracker sandbox.
+*   `server.py`: FastAPI backend that streams agent events to the frontend.
+*   `web/`: The frontend application (single-file HTML/JS).
+*   `main.py`: CLI entry point.
+
+## 🛡️ Security Note
+
+Manus executes generated code. While E2B provides strong isolation via Firecracker MicroVMs, always review the agent's plan for critical tasks.
+
+## 📄 License
+
+MIT
