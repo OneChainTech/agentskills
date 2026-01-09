@@ -232,7 +232,7 @@
         </div>
 
         <!-- Preview View -->
-        <div id="previewView" class="hidden flex-1 flex-col bg-white relative">
+        <div id="previewView" class="hidden flex-1 flex-col bg-white relative overflow-hidden">
              <iframe id="previewFrame" class="w-full h-full border-none hidden z-10 relative"></iframe>
              <div id="previewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 gap-4">
                 <div class="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center shadow-inner">
@@ -266,7 +266,11 @@
         const previewFrame = document.getElementById('previewFrame');
         const previewPlaceholder = document.getElementById('previewPlaceholder');
 
-        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        // Create Workflow Container
+        const workflowContainer = document.createElement('div');
+        workflowContainer.id = 'workflowContainer';
+        workflowContainer.className = 'w-full h-full overflow-y-auto p-6 space-y-6 hidden bg-slate-50 dark:bg-slate-900';
+        previewView.appendChild(workflowContainer);
 
         function switchTab(tab) {
             if (tab === 'console') {
@@ -331,21 +335,125 @@
         async function appendLog(text, type = 'info') {
             const line = createLogLine(text, type);
             logsContainer.appendChild(line);
-            // Keep scroll at bottom
             requestAnimationFrame(() => {
                 terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
             });
         }
 
+        // --- Workflow Visualization Logic ---
+
+        let currentTurnDiv = null;
+
+        function getOrCreateTurnDiv(turnIndex) {
+            let id = `turn-${turnIndex}`;
+            let el = document.getElementById(id);
+            if (!el) {
+                el = document.createElement('div');
+                el.id = id;
+                el.className = 'bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300';
+                
+                // Header
+                el.innerHTML = `
+                    <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-bold">
+                            ${turnIndex}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Step ${turnIndex}</span>
+                    </div>
+                    <div class="p-4 space-y-4 content-area"></div>
+                `;
+                workflowContainer.appendChild(el);
+                // Scroll to bottom of workflow
+                workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
+            }
+            return el.querySelector('.content-area');
+        }
+
+        function appendThought(content) {
+            if (!currentTurnDiv) return; // Should have been created by 'status' event
+            
+            const div = document.createElement('div');
+            div.className = 'prose dark:prose-invert prose-sm max-w-none text-slate-600 dark:text-slate-300 leading-relaxed';
+            // Simple markdown-ish parsing
+            let html = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-slate-100">$1</strong>')
+                .replace(/`(.*?)`/g, '<code class="bg-slate-100 dark:bg-slate-900 px-1 py-0.5 rounded text-pink-500 font-mono text-xs">$1</code>')
+                .replace(/\n/g, '<br>');
+            div.innerHTML = html;
+            currentTurnDiv.appendChild(div);
+        }
+
+        function appendAction(toolName, args) {
+            if (!currentTurnDiv) return;
+
+            const div = document.createElement('div');
+            div.className = 'group flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-blue-800 transition-colors';
+            
+            const iconMap = {
+                'run_code': '⚡',
+                'run_shell_command': '💻',
+                'read_file': '📄',
+                'write_file': '💾',
+                'list_files': '📂',
+                'visualize_file': '👁️',
+                'install_package': '📦',
+                'default': '🔧'
+            };
+            const icon = iconMap[toolName] || iconMap['default'];
+
+            div.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <span class="text-lg">${icon}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded">${toolName}</span>
+                            <span class="text-xs text-slate-400 animate-pulse">Running...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // If there's code/args, show it collapsed or small
+            if (args && (args.code || args.command)) {
+                const code = args.code || args.command;
+                const codeBlock = document.createElement('div');
+                codeBlock.className = 'mt-2 pl-9';
+                codeBlock.innerHTML = `
+                    <div class="text-[10px] font-mono text-slate-500 bg-white dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800 overflow-x-auto">
+                        ${code.substring(0, 150)}${code.length > 150 ? '...' : ''}
+                    </div>
+                `;
+                div.appendChild(codeBlock);
+            }
+
+            currentTurnDiv.appendChild(div);
+            return div; // Return ref to update later
+        }
+
+        function updateActionStatus(actionEl, success, result) {
+            if (!actionEl) return;
+            const statusSpan = actionEl.querySelector('.animate-pulse');
+            if (statusSpan) {
+                statusSpan.className = `text-xs font-medium ${success ? 'text-green-500' : 'text-red-500'}`;
+                statusSpan.textContent = success ? 'Completed' : 'Failed';
+            }
+            
+            // Append result snippet
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'mt-2 pl-9 text-xs text-slate-500 dark:text-slate-400 font-mono border-l-2 border-slate-200 dark:border-slate-700 pl-2 ml-1';
+            const shortResult = result.length > 200 ? result.substring(0, 200) + '...' : result;
+            resultDiv.textContent = shortResult;
+            actionEl.appendChild(resultDiv);
+        }
+
+        let lastActionEl = null;
+
         async function handleEvent(event) {
+            // -- Terminal Log --
             switch(event.type) {
-                case 'system':
-                    await appendLog(event.message, 'dim');
-                    break;
-                case 'status':
-                    await appendLog(event.message, 'system');
-                    break;
-                case 'code':
+                case 'system': await appendLog(event.message, 'dim'); break;
+                case 'status': await appendLog(event.message, 'system'); break;
+                case 'code': 
                     await appendLog('Generated Python Code:', 'system');
                     const codeBlock = document.createElement('div');
                     codeBlock.className = 'ml-12 my-2 p-4 bg-[#0F131F] border border-blue-900/30 rounded-lg text-xs font-mono text-blue-200 whitespace-pre overflow-x-auto shadow-inner custom-scroll';
@@ -354,23 +462,6 @@
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
                     break;
                 case 'output':
-                    try {
-                        const trimmed = event.content.trim();
-                        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-                            const data = JSON.parse(trimmed);
-                            if (data.type === 'file_preview' || data.type === 'preview') {
-                                await handleEvent({
-                                    type: 'preview',
-                                    path: data.path,
-                                    mime: data.mime,
-                                    content: data.content
-                                });
-                                await appendLog(`(Output converted to preview: ${data.path})`, 'dim');
-                                return;
-                            }
-                        }
-                    } catch (e) {}
-
                     await appendLog('Execution Result:', 'success');
                     const outBlock = document.createElement('div');
                     outBlock.className = 'ml-12 my-2 p-4 bg-black/50 border-l-2 border-green-500/50 rounded-r-lg text-xs font-mono text-green-300 whitespace-pre overflow-x-auto';
@@ -385,47 +476,134 @@
                     answerBlock.textContent = event.content;
                     logsContainer.appendChild(answerBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
-                    break;
-                case 'success':
-                    await appendLog(event.message, 'success');
-                    break;
-                case 'error':
-                    await appendLog(event.message, 'error');
-                    break;
-                case 'preview':
-                case 'file_preview':
-                    await appendLog(`Artifact Generated: ${event.path || 'Preview'}`, 'success');
-                    
-                    // Show notification dot on preview tab
-                    tabPreviewIndicator.classList.remove('hidden');
-                    tabPreviewIndicator.classList.add('animate-pulse');
-                    
-                    if (!event.content && event.mime !== 'url') {
-                        return;
+
+                    // Add to Workflow
+                    if (currentTurnDiv) {
+                        const div = document.createElement('div');
+                        div.className = 'mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 leading-relaxed';
+                        // Simple formatting
+                        let html = event.content
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-white">$1</strong>')
+                            .replace(/`(.*?)`/g, '<code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded text-pink-500 font-mono text-xs">$1</code>')
+                            .replace(/\n/g, '<br>');
+                        div.innerHTML = `<div class="flex items-center gap-2 mb-2 text-green-600 dark:text-green-400 font-bold text-xs uppercase tracking-wider">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            Task Completed
+                        </div>${html}`;
+                        currentTurnDiv.appendChild(div);
+                        workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
                     }
-
-                    previewPlaceholder.classList.add('hidden');
-                    previewFrame.classList.remove('hidden');
-                    
-                    // Reset iframe
-                    previewFrame.src = "about:blank";
-                    previewFrame.removeAttribute("srcdoc");
-
-                    setTimeout(() => {
-                        if (event.mime === 'url') {
-                            previewFrame.src = event.content;
-                        } else if (event.mime === 'text/html') {
-                            previewFrame.srcdoc = event.content;
-                        } else if (event.mime && event.mime.startsWith('image/')) {
-                            previewFrame.srcdoc = `
-                                <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f0f0;">
-                                    <img src="data:${event.mime};base64,${event.content}" style="max-width:100%;max-height:100%;box-shadow:0 0 30px rgba(0,0,0,0.1);">
-                                </body>`;
-                        } else {
-                            previewFrame.srcdoc = `<pre style="padding:20px;white-space:pre-wrap;font-family:monospace;color:#333;font-size:12px;">${event.content}</pre>`;
-                        }
-                    }, 50);
                     break;
+                case 'error': await appendLog(event.message, 'error'); break;
+            }
+
+            // -- Workflow Visualization --
+            
+            // Ensure Workflow Container is visible if we start running
+            if (previewPlaceholder && !previewPlaceholder.classList.contains('hidden')) {
+                 previewPlaceholder.classList.add('hidden');
+                 workflowContainer.classList.remove('hidden');
+            }
+
+            // Parse Turns
+            if (event.type === 'status') {
+                const turnMatch = event.message.match(/Thinking \(Turn (\d+)\)/);
+                if (turnMatch) {
+                    const turnIndex = turnMatch[1];
+                    currentTurnDiv = getOrCreateTurnDiv(turnIndex);
+                }
+                
+                if (event.message.startsWith('Calling tool:')) {
+                    const toolName = event.message.split(':')[1].trim();
+                    // We don't have args here easily unless we parse, but wait for next event?
+                    // Actually agent.py sends 'code' event separately for code tools.
+                    // We'll create a placeholder action.
+                    lastActionEl = appendAction(toolName, {});
+                }
+            }
+            
+            if (event.type === 'thought') {
+                appendThought(event.content);
+            }
+
+            if (event.type === 'code') {
+                // Attach code to the last action if possible, or just update UI
+                if (lastActionEl) {
+                     // Update the code block inside lastActionEl if it was empty?
+                     // For now, simpler to just let it be.
+                }
+            }
+
+            if (event.type === 'output') {
+                 if (lastActionEl) {
+                    updateActionStatus(lastActionEl, true, event.content);
+                    lastActionEl = null;
+                 }
+                 
+                 // Check for preview data in output
+                 try {
+                    const trimmed = event.content.trim();
+                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        const data = JSON.parse(trimmed);
+                        if (data.type === 'file_preview' || data.type === 'preview') {
+                            await handleEvent({
+                                type: 'preview',
+                                path: data.path,
+                                mime: data.mime,
+                                content: data.content
+                            });
+                        }
+                    }
+                 } catch(e) {}
+            }
+            
+            if (event.type === 'error') {
+                 if (lastActionEl) {
+                    updateActionStatus(lastActionEl, false, event.message);
+                    lastActionEl = null;
+                 }
+            }
+
+            if (event.type === 'preview' || event.type === 'file_preview') {
+                 // Add a Preview Card to the workflow
+                 if (currentTurnDiv) {
+                    const div = document.createElement('div');
+                    div.className = 'mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-black';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'px-3 py-2 bg-slate-200 dark:bg-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400 flex justify-between';
+                    header.innerHTML = `<span>${event.path || 'Preview'}</span><span>${event.mime || ''}</span>`;
+                    div.appendChild(header);
+
+                    const contentArea = document.createElement('div');
+                    contentArea.className = 'relative';
+                    contentArea.style.height = '300px'; 
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'w-full h-full border-none bg-white';
+                    
+                    if (event.mime === 'url') {
+                        iframe.src = event.content;
+                    } else if (event.mime === 'text/html') {
+                        iframe.srcdoc = event.content;
+                    } else if (event.mime && event.mime.startsWith('image/')) {
+                        iframe.srcdoc = `
+                            <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f0f0;">
+                                <img src="data:${event.mime};base64,${event.content}" style="max-width:100%;max-height:100%;box-shadow:0 0 20px rgba(0,0,0,0.1);">
+                            </body>`;
+                    } else {
+                        iframe.srcdoc = `<pre style="padding:20px;white-space:pre-wrap;font-family:monospace;color:#333;font-size:12px;">${event.content}</pre>`;
+                    }
+                    
+                    contentArea.appendChild(iframe);
+                    div.appendChild(contentArea);
+                    
+                    currentTurnDiv.appendChild(div);
+                    workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
+                    
+                    // Also switch to preview tab automatically
+                    switchTab('preview');
+                 }
             }
         }
 
@@ -438,7 +616,7 @@
                 return;
             }
 
-            // Disable UI
+            // Reset
             runBtn.disabled = true;
             const originalBtnContent = runBtn.innerHTML;
             runBtn.innerHTML = `
@@ -449,12 +627,18 @@
                 Processing...
             `;
 
-            logsContainer.innerHTML = ''; // Clear previous logs
-            switchTab('console');
+            logsContainer.innerHTML = ''; 
+            workflowContainer.innerHTML = '';
+            currentTurnDiv = null;
+            lastActionEl = null;
+
+            // Default to preview tab for the "Rich Experience"
+            switchTab('preview'); 
             
             try {
-                await appendLog(`Sequence initiated for task: "${task}"`, 'system');
-
+                // Initial Turn
+                // currentTurnDiv = getOrCreateTurnDiv(1);
+                
                 const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -491,8 +675,8 @@
             } catch (e) {
                 console.error("Execution error:", e);
                 await appendLog(`Critical Failure: ${e.message}`, 'error');
+                if(lastActionEl) updateActionStatus(lastActionEl, false, e.message);
             } finally {
-                // Reset UI
                 runBtn.disabled = false;
                 runBtn.innerHTML = originalBtnContent;
             }
