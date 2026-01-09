@@ -3,6 +3,7 @@ from e2b_code_interpreter import AsyncSandbox
 import asyncio
 import os
 import logging
+import re
 from dotenv import load_dotenv
 
 # Configure logging to stderr to avoid interfering with MCP stdout
@@ -198,6 +199,41 @@ async def visualize_file(path: str) -> str:
             content = exec_result.stdout.replace("\n", "").replace("\r", "").strip()
         else:
             content = await sb.files.read(path)
+            
+            # --- AUTO-INLINE IMAGES FOR HTML ---
+            # If the agent forgot to base64 encode images in HTML, we do it here.
+            if mime == "text/html":
+                # Find all src="something.png" pattern
+                matches = re.findall(r'src=["\']([^"\']+\.(?:png|jpg|jpeg|svg))["\']', content)
+                
+                # Deduplicate
+                img_paths = list(set(matches))
+                
+                for img_path in img_paths:
+                    # Ignore http/https links or data uris
+                    if img_path.startswith("http") or img_path.startswith("data:"):
+                        continue
+                        
+                    try:
+                        # Determine img mime
+                        img_ext = img_path.split('.')[-1].lower()
+                        img_mime = "image/png"
+                        if img_ext in ["jpg", "jpeg"]: img_mime = "image/jpeg"
+                        elif img_ext == "svg": img_mime = "image/svg+xml"
+                        
+                        # Read binary from sandbox
+                        cmd = f"cat {img_path} | base64"
+                        exec_result = await sb.commands.run(cmd)
+                        
+                        if exec_result.exit_code == 0:
+                            b64 = exec_result.stdout.replace("\n", "").replace("\r", "").strip()
+                            data_uri = f"data:{img_mime};base64,{b64}"
+                            # Replace in content (simple string replace)
+                            content = content.replace(img_path, data_uri)
+                    except Exception as e:
+                        # If image not found or error, just skip
+                        pass
+            # -----------------------------------
             
         import json
         return json.dumps({
