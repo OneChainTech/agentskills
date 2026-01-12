@@ -33,7 +33,8 @@ async def get_or_create_sandbox():
 
     # Create new AsyncSandbox
     try:
-        GLOBAL_SANDBOX = await AsyncSandbox.create()
+        # Use the specific template 'code-interpreter-v1' (nlhz8vlwyupq845jsdg9)
+        GLOBAL_SANDBOX = await AsyncSandbox.create("code-interpreter-v1")
     except Exception as e:
         raise RuntimeError(f"Failed to create E2B Sandbox: {e}")
         
