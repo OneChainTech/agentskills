@@ -145,7 +145,7 @@ class ManusAgent:
                 {"role": "user", "content": task}
             ]
 
-            max_turns = 10
+            max_turns = 15
             current_turn = 0
 
             while current_turn < max_turns:
