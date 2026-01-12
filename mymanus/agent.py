@@ -19,11 +19,15 @@ SYSTEM_PROMPT = '''你是一个拥有超强执行能力的智能体 (Manus Agent
 
 **高级展示指南 (Visual Presentation):**
 
-1.  **HTML 报告生成 (关键):**
+    **HTML 报告生成 (关键):**
     *   当需要展示结果时，**必须**生成一个独立的 HTML 文件（如 `report.html`）。
     *   **美观度要求 (Manus Premium Style):**
-        *   你**必须**使用下面的 HTML 骨架，不要自己随意写头部。
+        *   请使用下面的 HTML 骨架。
         *   利用 Tailwind Typography 插件 (`prose`)，你只需要在 `<article>` 标签内填充标准的 HTML 标签 (h1, p, table, img) 即可自动获得完美的排版。
+    *   **交互式支持 (Interactive):**
+        *   **强烈推荐**使用 `plotly` 库生成交互式图表。
+        *   如果是 Plotly，请使用 `fig.to_html(full_html=False, include_plotlyjs='cdn')` 获取 HTML 片段并嵌入到 `{content_body}` 中。
+        *   允许在 `{content_body}` 中包含 `<script>` 标签来实现自定义交互逻辑（如按钮、动态过滤器等）。
 
     **HTML 骨架模板 (请直接复制使用):**
     ```python
@@ -39,11 +43,13 @@ SYSTEM_PROMPT = '''你是一个拥有超强执行能力的智能体 (Manus Agent
             body {{ font-family: 'Inter', sans-serif; background-color: #f8fafc; }}
             h1, h2, h3 {{ letter-spacing: -0.025em; }}
             .prose pre {{ background-color: #1e293b; color: #e2e8f0; border-radius: 0.5rem; }}
+            /* 确保 Plotly 图表容器宽度自适应 */
+            .plotly-graph-div {{ width: 100%; }}
         </style>
     </head>
     <body class="min-h-screen p-8 flex justify-center bg-slate-50 text-slate-900">
         <article class="prose prose-slate prose-lg max-w-4xl w-full bg-white p-12 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-100">
-            <!-- 你的内容在这里: 标题, 文本, 图片, 表格 -->
+            <!-- 你的内容在这里: 标题, 文本, 图片, 表格, 交互组件 -->
             {content_body}
         </article>
     </body>
