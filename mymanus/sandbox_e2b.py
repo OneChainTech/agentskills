@@ -17,6 +17,8 @@ mcp = FastMCP("E2B_Firecracker_Sandbox")
 
 # Global sandbox instance
 GLOBAL_SANDBOX = None
+STATIC_SERVER_PORT = 8000
+SERVER_STARTED = False
 
 async def get_or_create_sandbox():
     """Get the running E2B sandbox or create a new one."""
@@ -39,6 +41,7 @@ async def get_or_create_sandbox():
 
 @mcp.tool()
 async def run_code(code: str) -> str:
+
     """
     Executes Python code in a secure Firecracker MicroVM via E2B.
     Variables are preserved between calls in the same session.
@@ -71,15 +74,21 @@ async def run_code(code: str) -> str:
         return f"E2B Execution Error: {str(e)}"
 
 @mcp.tool()
-async def run_shell_command(command: str) -> str:
+async def run_shell_command(command: str, is_background: bool = False) -> str:
     """
     Executes a shell command in the E2B sandbox.
     
     Args:
         command: The shell command to execute (e.g. 'pip install numpy', 'ls -la').
+        is_background: Set to True to run the command in the background (e.g. for starting servers).
     """
     try:
         sb = await get_or_create_sandbox()
+        
+        if is_background:
+            # Execute in background and return PID immediately
+            cmd_handle = await sb.commands.run(command, background=True)
+            return f"Command '{command}' started in background. PID: {cmd_handle.pid}"
         
         exec_result = await sb.commands.run(command)
         
@@ -142,6 +151,33 @@ async def write_file(path: str, content: str) -> str:
         return f"Error writing file: {str(e)}"
 
 @mcp.tool()
+async def upload_local_file(local_path: str, remote_path: str = None) -> str:
+    """
+    Uploads a file from the local machine (where the agent is running) to the E2B sandbox.
+    Use this to load user-uploaded files into the analysis environment.
+    
+    Args:
+        local_path: The absolute path to the file on the local server.
+        remote_path: The destination path in the sandbox. Defaults to the filename.
+    """
+    try:
+        sb = await get_or_create_sandbox()
+        
+        if not os.path.exists(local_path):
+            return f"Error: Local file '{local_path}' not found."
+            
+        if not remote_path:
+            remote_path = os.path.basename(local_path)
+            
+        with open(local_path, "rb") as f:
+            file_data = f.read()
+            
+        await sb.files.write(remote_path, file_data)
+        return f"File uploaded successfully to sandbox at '{remote_path}'"
+    except Exception as e:
+        return f"Error uploading file: {str(e)}"
+
+@mcp.tool()
 async def install_package(package_name: str) -> str:
     """
     Install a Python package using pip in the sandbox.
@@ -168,14 +204,25 @@ async def install_package(package_name: str) -> str:
 @mcp.tool()
 async def visualize_file(path: str) -> str:
     """
-    Read a file and return it as a visualization event for the user.
-    Use this for HTML, Images, or other visual artifacts.
-    Returns a JSON string identifying the content.
+    Expose a file via a public URL for visualization.
+    Automatically starts a static file server in the sandbox if needed.
     """
+    global SERVER_STARTED
     try:
         sb = await get_or_create_sandbox()
         
-        # Determine MIME type based on extension
+        # Start server if not running
+        if not SERVER_STARTED:
+            # We blindly try to start it. If port is taken, it might be us or user.
+            # Using python -m http.server is lightweight and standard.
+            await sb.commands.run(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
+            SERVER_STARTED = True
+            
+        # Get public host
+        host = sb.get_host(STATIC_SERVER_PORT)
+        url = f"https://{host}/{path}"
+        
+        # Determine MIME type for frontend hint (optional but good for UI logic)
         ext = path.split('.')[-1].lower() if '.' in path else 'txt'
         mime = "text/plain"
         if ext == "html": mime = "text/html"
@@ -185,62 +232,12 @@ async def visualize_file(path: str) -> str:
         elif ext == "json": mime = "application/json"
         elif ext == "md": mime = "text/markdown"
         
-        content = ""
-        is_binary = mime.startswith("image/")
-        
-        if is_binary:
-            # Use shell to get base64 for images
-            # -w 0 is important to avoid newlines in base64 output on Linux (alpine base64 usually behaves differently, so we strip manually)
-            cmd = f"cat {path} | base64"
-            exec_result = await sb.commands.run(cmd)
-            if exec_result.exit_code != 0:
-                return f"Error reading binary file: {exec_result.stderr}"
-            # STRICTLY REMOVE NEWLINES to prevent JSON parse errors
-            content = exec_result.stdout.replace("\n", "").replace("\r", "").strip()
-        else:
-            content = await sb.files.read(path)
-            
-            # --- AUTO-INLINE IMAGES FOR HTML ---
-            # If the agent forgot to base64 encode images in HTML, we do it here.
-            if mime == "text/html":
-                # Find all src="something.png" pattern
-                matches = re.findall(r'src=["\']([^"\']+\.(?:png|jpg|jpeg|svg))["\']', content)
-                
-                # Deduplicate
-                img_paths = list(set(matches))
-                
-                for img_path in img_paths:
-                    # Ignore http/https links or data uris
-                    if img_path.startswith("http") or img_path.startswith("data:"):
-                        continue
-                        
-                    try:
-                        # Determine img mime
-                        img_ext = img_path.split('.')[-1].lower()
-                        img_mime = "image/png"
-                        if img_ext in ["jpg", "jpeg"]: img_mime = "image/jpeg"
-                        elif img_ext == "svg": img_mime = "image/svg+xml"
-                        
-                        # Read binary from sandbox
-                        cmd = f"cat {img_path} | base64"
-                        exec_result = await sb.commands.run(cmd)
-                        
-                        if exec_result.exit_code == 0:
-                            b64 = exec_result.stdout.replace("\n", "").replace("\r", "").strip()
-                            data_uri = f"data:{img_mime};base64,{b64}"
-                            # Replace in content (simple string replace)
-                            content = content.replace(img_path, data_uri)
-                    except Exception as e:
-                        # If image not found or error, just skip
-                        pass
-            # -----------------------------------
-            
         import json
         return json.dumps({
             "type": "file_preview",
             "path": path,
-            "mime": mime,
-            "content": content
+            "mime": "url", # Frontend handles this as an iframe src
+            "content": url
         })
         
     except Exception as e:
