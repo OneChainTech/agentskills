@@ -218,6 +218,8 @@ async def visualize_file(path: str) -> str:
             # Using python -m http.server is lightweight and standard.
             await sb.commands.run(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
             SERVER_STARTED = True
+            # Give the server a moment to bind the port
+            await asyncio.sleep(2)
             
         # Get public host
         host = sb.get_host(STATIC_SERVER_PORT)
