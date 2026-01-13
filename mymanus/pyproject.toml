@@ -12,4 +12,5 @@ dependencies = [
     "uvicorn>=0.40.0",
     "python-dotenv>=1.0.0",
     "e2b-code-interpreter>=0.0.10",
+    "e2b-desktop>=2.2.0",
 ]

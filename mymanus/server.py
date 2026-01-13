@@ -11,6 +11,8 @@ import shutil
 import os
 from agent import ManusAgent
 
+import sandbox_e2b
+
 # Load environment variables
 load_dotenv()
 
@@ -31,6 +33,103 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class TaskRequest(BaseModel):
     task: str
     files: Optional[List[str]] = []
+
+class ClickRequest(BaseModel):
+    x: int
+    y: int
+
+class TypeRequest(BaseModel):
+    text: str
+
+class KeyRequest(BaseModel):
+    key: str
+
+class ScrollRequest(BaseModel):
+    amount: int
+
+class AppRequest(BaseModel):
+    app_name: str
+
+@app.post("/api/desktop/start")
+async def start_desktop():
+    try:
+        await sandbox_e2b.get_or_create_desktop_sandbox()
+        url = await sandbox_e2b.desktop_get_stream_url()
+        return {"status": "started", "stream_url": url}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/desktop/stream_url")
+async def get_stream_url():
+    try:
+        url = await sandbox_e2b.desktop_get_stream_url()
+        return {"stream_url": url}
+    except Exception as e:
+         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/desktop/screenshot")
+async def take_screenshot():
+    try:
+        b64 = await sandbox_e2b.desktop_take_screenshot()
+        return {"screenshot": b64}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/desktop/click")
+async def desktop_click_endpoint(req: ClickRequest):
+    try:
+        res = await sandbox_e2b.desktop_left_click(req.x, req.y)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+        
+@app.post("/api/desktop/double_click")
+async def desktop_double_click_endpoint(req: ClickRequest):
+    try:
+        res = await sandbox_e2b.desktop_double_click(req.x, req.y)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+        
+@app.post("/api/desktop/right_click")
+async def desktop_right_click_endpoint(req: ClickRequest):
+    try:
+        res = await sandbox_e2b.desktop_right_click(req.x, req.y)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/desktop/type")
+async def desktop_type_endpoint(req: TypeRequest):
+    try:
+        res = await sandbox_e2b.desktop_type(req.text)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/desktop/press")
+async def desktop_press_endpoint(req: KeyRequest):
+    try:
+        res = await sandbox_e2b.desktop_press(req.key)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+        
+@app.post("/api/desktop/scroll")
+async def desktop_scroll_endpoint(req: ScrollRequest):
+    try:
+        res = await sandbox_e2b.desktop_scroll(req.amount)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/desktop/open")
+async def desktop_open_endpoint(req: AppRequest):
+    try:
+        res = await sandbox_e2b.desktop_open_app(req.app_name)
+        return {"result": res}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/upload")
 def upload_file(file: UploadFile = File(...)):

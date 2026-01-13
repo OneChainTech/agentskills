@@ -1,5 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from e2b_code_interpreter import AsyncSandbox
+from e2b_desktop import Sandbox as DesktopSandbox
 import asyncio
 import os
 import logging
@@ -17,6 +18,8 @@ mcp = FastMCP("E2B_Firecracker_Sandbox")
 
 # Global sandbox instance
 GLOBAL_SANDBOX = None
+GLOBAL_DESKTOP_SANDBOX = None
+DESKTOP_STREAM_STARTED = False
 STATIC_SERVER_PORT = 8000
 SERVER_STARTED = False
 
@@ -253,6 +256,128 @@ async def get_public_url(port: int) -> str:
         sb = await get_or_create_sandbox()
         host = sb.get_host(port)
         return f"https://{host}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# --- Desktop Sandbox Tools ---
+
+async def get_or_create_desktop_sandbox():
+    """Get the running E2B desktop sandbox or create a new one."""
+    global GLOBAL_DESKTOP_SANDBOX
+    
+    if not os.getenv("E2B_API_KEY"):
+        raise RuntimeError("E2B_API_KEY not found")
+
+    if GLOBAL_DESKTOP_SANDBOX:
+        return GLOBAL_DESKTOP_SANDBOX
+
+    try:
+        # Use the specific desktop template 'k0wmnzir0zuzye6dndlw'
+        # Run synchronous create in a thread
+        GLOBAL_DESKTOP_SANDBOX = await asyncio.to_thread(DesktopSandbox.create, "k0wmnzir0zuzye6dndlw")
+    except Exception as e:
+        raise RuntimeError(f"Failed to create E2B Desktop Sandbox: {e}")
+        
+    return GLOBAL_DESKTOP_SANDBOX
+
+@mcp.tool()
+async def desktop_get_stream_url() -> str:
+    """Get the desktop stream URL for viewing."""
+    global DESKTOP_STREAM_STARTED
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        if not DESKTOP_STREAM_STARTED:
+            await asyncio.to_thread(sb.stream.start)
+            DESKTOP_STREAM_STARTED = True
+        return await asyncio.to_thread(sb.stream.get_url)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_take_screenshot() -> str:
+    """Take a screenshot and return base64 string."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        import base64
+        # SDK likely returns bytes. Run in thread.
+        screenshot_bytes = await asyncio.to_thread(sb.screenshot)
+        return base64.b64encode(screenshot_bytes).decode('utf-8')
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_left_click(x: int, y: int) -> str:
+    """Move mouse to (x, y) and left click."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        # Flattened API: move_mouse, left_click
+        await asyncio.to_thread(sb.move_mouse, x, y)
+        await asyncio.to_thread(sb.left_click)
+        return f"Clicked at ({x}, {y})"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_double_click(x: int, y: int) -> str:
+    """Move mouse to (x, y) and double click."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        await asyncio.to_thread(sb.move_mouse, x, y)
+        await asyncio.to_thread(sb.double_click)
+        return f"Double clicked at ({x}, {y})"
+    except Exception as e:
+        return f"Error: {str(e)}"
+        
+@mcp.tool()
+async def desktop_right_click(x: int, y: int) -> str:
+    """Move mouse to (x, y) and right click."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        await asyncio.to_thread(sb.move_mouse, x, y)
+        await asyncio.to_thread(sb.right_click)
+        return f"Right clicked at ({x}, {y})"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_type(text: str) -> str:
+    """Type text."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        # Assuming 'write' is the method for typing based on dir(Sandbox) having 'write' and 'press'
+        # Wait, dir(Sandbox) has 'write' and 'press'. 'write' usually means typing string.
+        await asyncio.to_thread(sb.write, text)
+        return f"Typed: {text}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_press(key: str) -> str:
+    """Press a key (e.g. 'Enter', 'Space', 'Backspace')."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        await asyncio.to_thread(sb.press, key)
+        return f"Pressed: {key}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_scroll(amount: int) -> str:
+    """Scroll mouse wheel (positive for up, negative for down)."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        await asyncio.to_thread(sb.scroll, amount)
+        return f"Scrolled {amount}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.tool()
+async def desktop_open_app(app_name: str) -> str:
+    """Launch an application."""
+    try:
+        sb = await get_or_create_desktop_sandbox()
+        await asyncio.to_thread(sb.launch, app_name)
+        return f"Launched {app_name}"
     except Exception as e:
         return f"Error: {str(e)}"
 
