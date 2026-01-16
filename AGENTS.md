@@ -28,8 +28,20 @@ Usage notes:
 </skill>
 
 <skill>
+<name>json-canvas</name>
+<description>Create and edit JSON Canvas files (.canvas) with nodes, edges, groups, and connections. Use when working with .canvas files, creating visual canvases, mind maps, flowcharts, or when the user mentions Canvas files in Obsidian.</description>
+<location>project</location>
+</skill>
+
+<skill>
 <name>mcp-builder</name>
 <description>Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).</description>
+<location>project</location>
+</skill>
+
+<skill>
+<name>obsidian-markdown</name>
+<description>Create and edit Obsidian Flavored Markdown with wikilinks, embeds, callouts, properties, and other Obsidian-specific syntax. Use when working with .md files in Obsidian, or when the user mentions wikilinks, callouts, frontmatter, tags, embeds, or Obsidian notes.</description>
 <location>project</location>
 </skill>
 
