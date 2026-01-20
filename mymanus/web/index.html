@@ -189,27 +189,25 @@
         <main class="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
             
             <div class="space-y-3 flex-1 flex flex-col">
-                <label for="taskInput" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
-                    Mission
-                </label>
+                <div class="flex items-center justify-between pr-1">
+                    <label for="taskInput" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                        Mission
+                    </label>
+                    <label class="cursor-pointer group/attach flex items-center justify-center p-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all shadow-sm">
+                        <input type="file" id="fileInput" class="hidden" multiple />
+                        <svg class="w-4 h-4 text-slate-400 group-hover/attach:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                    </label>
+                </div>
                 <div class="relative group flex-1 flex flex-col gap-3">
                     <textarea 
                         id="taskInput" 
-                        class="w-full flex-1 min-h-[120px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
+                        class="w-full flex-1 min-h-[150px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
                         placeholder="Initialize task sequence...&#10;&#10;Describe your goal clearly. I can run code, visualize data, and explore the web."
                         spellcheck="false"
                     ></textarea>
-
-                    <!-- File Attachment Toolbar -->
-                    <div class="flex items-center gap-2 px-1">
-                        <label class="cursor-pointer group/attach flex items-center justify-center p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all shadow-sm">
-                            <input type="file" id="fileInput" class="hidden" multiple />
-                            <svg class="w-4 h-4 text-slate-400 group-hover/attach:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                            </svg>
-                        </label>
-                        <div id="fileChips" class="flex flex-1 gap-2 overflow-x-auto py-1"></div>
-                    </div>
+                    <div id="fileChips" class="flex flex-wrap gap-2 px-1 py-1"></div>
                 </div>
             </div>
 
@@ -280,6 +278,19 @@
                             <div class="flex-1">
                                 <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400">CSV Analysis & Report</div>
                                 <div class="text-[10px] text-slate-500 dark:text-slate-400">Upload, Analyze, Chart & HTML</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Type 6: Streamlit App -->
+                    <button onclick="setTask('Streamlit App: Build & Deploy. 1. Install \'streamlit\'. 2. Create \'app.py\' with a title, slider, and a line chart. 3. Run it in background: \'streamlit run app.py --server.port 8501 --server.headless true &\'. 4. Get the public URL for port 8501.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-red-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-red-300 dark:hover:border-red-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-red-600 dark:group-hover:text-red-400">Streamlit App</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Interactive Web Apps</div>
                             </div>
                         </div>
                     </button>
