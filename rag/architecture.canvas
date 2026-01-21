@@ -1,0 +1,239 @@
+{
+  "nodes": [
+    {
+      "id": "user_node",
+      "type": "text",
+      "x": -1000,
+      "y": 100,
+      "width": 150,
+      "height": 100,
+      "text": "## User\n\nInteracts with Browser",
+      "color": "5"
+    },
+    {
+      "id": "ui_group",
+      "type": "group",
+      "x": -800,
+      "y": -50,
+      "width": 300,
+      "height": 400,
+      "label": "Frontend (Web UI)",
+      "color": "3"
+    },
+    {
+      "id": "html_node",
+      "type": "text",
+      "x": -780,
+      "y": 0,
+      "width": 260,
+      "height": 100,
+      "text": "**Single Page App**\n\nHTML + Tailwind CSS\nVisual Interface"
+    },
+    {
+      "id": "js_node",
+      "type": "text",
+      "x": -780,
+      "y": 150,
+      "width": 260,
+      "height": 120,
+      "text": "**Client Logic**\n\napp.js\n- File Uploads\n- Chat State\n- API Calls",
+      "color": "3"
+    },
+    {
+      "id": "api_group",
+      "type": "group",
+      "x": -450,
+      "y": -50,
+      "width": 300,
+      "height": 400,
+      "label": "Backend (FastAPI)",
+      "color": "6"
+    },
+    {
+      "id": "server_node",
+      "type": "text",
+      "x": -430,
+      "y": 0,
+      "width": 260,
+      "height": 300,
+      "text": "**API Server**\n\nserver.py\n\nEndpoints:\n- POST /upload\n- POST /chat\n- GET /web/* (Static)",
+      "color": "6"
+    },
+    {
+      "id": "rag_service_node",
+      "type": "text",
+      "x": -100,
+      "y": 100,
+      "width": 200,
+      "height": 100,
+      "text": "**RAG Service**\n\nrag_engine.py\nOrchestrator",
+      "color": "2"
+    },
+    {
+      "id": "docs_group",
+      "type": "group",
+      "x": 150,
+      "y": -300,
+      "width": 550,
+      "height": 350,
+      "label": "Ingestion & Indexing",
+      "color": "2"
+    },
+    {
+      "id": "embed_model",
+      "type": "text",
+      "x": 180,
+      "y": -250,
+      "width": 240,
+      "height": 100,
+      "text": "**Embedding Model**\n\nBAAI/bge-m3\n(via SiliconFlow)",
+      "color": "3"
+    },
+    {
+      "id": "faiss_node",
+      "type": "text",
+      "x": 450,
+      "y": -100,
+      "width": 220,
+      "height": 100,
+      "text": "**Vector Store**\n\nFAISS (Dense)",
+      "color": "4"
+    },
+    {
+      "id": "bm25_node",
+      "type": "text",
+      "x": 180,
+      "y": -100,
+      "width": 220,
+      "height": 100,
+      "text": "**Keyword Index**\n\nBM25 (Sparse)",
+      "color": "4"
+    },
+    {
+      "id": "retrieval_group",
+      "type": "group",
+      "x": 150,
+      "y": 100,
+      "width": 900,
+      "height": 300,
+      "label": "Retrieval & Generation Pipeline",
+      "color": "1"
+    },
+    {
+      "id": "ensemble_node",
+      "type": "text",
+      "x": 180,
+      "y": 150,
+      "width": 250,
+      "height": 120,
+      "text": "**Ensemble Retriever**\n\nHybrid Search (50/50)\nBM25 + FAISS",
+      "color": "6"
+    },
+    {
+      "id": "reranker_node",
+      "type": "text",
+      "x": 480,
+      "y": 150,
+      "width": 250,
+      "height": 120,
+      "text": "**Reranker**\n\nBAAI/bge-reranker-v2-m3\n(via SiliconFlow)",
+      "color": "1"
+    },
+    {
+      "id": "llm_node",
+      "type": "text",
+      "x": 780,
+      "y": 150,
+      "width": 240,
+      "height": 120,
+      "text": "**LLM**\n\nQwen-Coder-30B\n(via SiliconFlow)",
+      "color": "4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_u_ui",
+      "fromNode": "user_node",
+      "fromSide": "right",
+      "toNode": "ui_group",
+      "toSide": "left",
+      "label": "Uses"
+    },
+    {
+      "id": "e_ui_js",
+      "fromNode": "html_node",
+      "fromSide": "bottom",
+      "toNode": "js_node",
+      "toSide": "top"
+    },
+    {
+      "id": "e_js_api",
+      "fromNode": "js_node",
+      "fromSide": "right",
+      "toNode": "server_node",
+      "toSide": "left",
+      "label": "JSON Requests"
+    },
+    {
+      "id": "e_api_rag",
+      "fromNode": "server_node",
+      "fromSide": "right",
+      "toNode": "rag_service_node",
+      "toSide": "left",
+      "label": "Calls"
+    },
+    {
+      "id": "e_rag_embed",
+      "fromNode": "rag_service_node",
+      "fromSide": "top",
+      "toNode": "docs_group",
+      "toSide": "bottom",
+      "label": "Ingest"
+    },
+    {
+      "id": "e_rag_retireve",
+      "fromNode": "rag_service_node",
+      "fromSide": "right",
+      "toNode": "ensemble_node",
+      "toSide": "left",
+      "label": "Query"
+    },
+    {
+      "id": "e_embed_faiss",
+      "fromNode": "embed_model",
+      "fromSide": "bottom",
+      "toNode": "faiss_node",
+      "toSide": "top"
+    },
+    {
+      "id": "e_faiss_ensemble",
+      "fromNode": "faiss_node",
+      "fromSide": "bottom",
+      "toNode": "ensemble_node",
+      "toSide": "top"
+    },
+    {
+      "id": "e_bm25_ensemble",
+      "fromNode": "bm25_node",
+      "fromSide": "bottom",
+      "toNode": "ensemble_node",
+      "toSide": "top"
+    },
+    {
+      "id": "e_ens_rerank",
+      "fromNode": "ensemble_node",
+      "fromSide": "right",
+      "toNode": "reranker_node",
+      "toSide": "left",
+      "label": "Candidates"
+    },
+    {
+      "id": "e_rerank_llm",
+      "fromNode": "reranker_node",
+      "fromSide": "right",
+      "toNode": "llm_node",
+      "toSide": "left",
+      "label": "Context"
+    }
+  ]
+}
