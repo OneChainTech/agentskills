@@ -1,95 +1,59 @@
 # MyManus
 
-一个由 **LLM (DeepSeek / Qwen)** 和 **E2B Firecracker MicroVMs** 驱动的高性能 Python 编程智能体。
+一个由 **LangChain deepagents** 和 **E2B Firecracker MicroVMs** 驱动的高性能自动编程智能体。
 
-Manus 旨在成为一个“代码优先”的自主智能体。它通过在安全的、有状态的沙箱中编写和执行 Python 代码来解决问题，而不仅仅是生成文本。
+MyManus 致力于成为一个“深度思考”的编程助手。它不仅能编写代码，还能在安全的、有状态的沙箱环境中执行代码、分析结果并根据反馈自我迭代。
 
 ## 🌟 核心特性
 
-*   **⚡️ LangChain 1.0 架构：** 现代化的智能体架构，具备强大的规划与执行能力。
-*   **🔒 安全的 E2B 沙箱：** 代码在隔离的 Firecracker MicroVM 中运行。文件和变量在整个会话期间持久保存，支持复杂的多步任务。
-*   **🧠 多模型支持：** 支持 DeepSeek V3、Qwen 2.5/3 等兼容 OpenAI 格式的高级推理模型。
-*   **🖥️ 增强型 Web 控制台：**
-    *   **可视化工作流：** 实时展示智能体的思考过程、工具调用和执行结果。
-    *   **实时预览：** 自动渲染生成的 HTML、图表 (Matplotlib/Plotly) 和数据。
-    *   **中文优化：** 针对中文图表显示进行了专门优化，完美支持 Plotly 交互式图表。
-    *   **交互体验：** 支持深色模式 (Dark Mode)、执行步骤复制、呼吸灯运行状态提示。
-*   **🛠️ CLI 模式：** 专为开发者设计的终端交互界面。
+*   **🧠 Deep Agents 架构：** 采用了最新的 `deepagents` 库，提供比标准 ReAct 更深度的推理链条和任务规划能力。
+*   **⚡️ LangGraph 1.0 驱动：** 核心编排基于状态机，确保长任务执行的稳定性和可观测性。
+*   **🔒 安全的 E2B 沙箱：** 所有的 Python 代码和 Shell 命令都在隔离的 Firecracker VM 中运行，保护宿主机安全。
+*   **🎨 UI/UX Pro Max 设计：** 生成的 HTML 报告采用“瑞士现代主义 2.0”风格，内置专业排版、交互式 Plotly 图表和现代审美。
+*   **🖥️ 极简可视化控制台：**
+    *   **自动展示：** 智能体生成任何可视化文件后，无需显式指令即可自动启动静态服务并预览。
+    *   **步骤摘要：** 自动过滤流式输出噪音，仅展示关键动作标题和执行结果。
+    *   **文件直传：** 输入框下方集成便捷的文件上传按钮，支持直接分析本地数据集。
 
 ## 🚀 前置要求
 
-1.  **Python 3.12+** (强烈推荐使用 [uv](https://github.com/astral-sh/uv) 进行包管理)
-2.  **E2B API Key**: 在 [e2b.dev](https://e2b.dev) 注册获取免费密钥（用于沙箱环境）。
-3.  **LLM API Key**: 兼容 OpenAI 格式的提供商（如 SiliconFlow, DeepSeek, Together AI）。
+1.  **Python 3.12+** (推荐使用 `uv`)
+2.  **E2B API Key**: [e2b.dev](https://e2b.dev)
+3.  **LLM API Key**: 支持 OpenAI 兼容接口的供应商（如 SiliconFlow, DeepSeek）。
 
 ## 🛠️ 安装与配置
 
-1.  **克隆项目：**
+1.  **准备环境：**
     ```bash
     git clone <repository-url>
     cd mymanus
-    ```
-
-2.  **配置环境：**
-    复制示例配置文件：
-    ```bash
     cp .env.example .env
     ```
-    编辑 `.env` 文件填入你的密钥：
-    ```ini
-    DEEPSEEK_API_KEY=sk-your-key
-    DEEPSEEK_BASE_URL=https://api.siliconflow.cn/v1
-    # 推荐使用 DeepSeek V3 或 Qwen 2.5 Coder
-    MODEL_ID=Qwen/Qwen2.5-Coder-32B-Instruct
-    E2B_API_KEY=e2b_...
-    ```
-
-3.  **安装依赖：**
-    使用 `uv` 快速同步依赖：
+2.  **安装依赖：**
     ```bash
     uv sync
     ```
 
 ## 🎮 使用指南
 
-### 1. Web 控制台 (推荐)
-
-体验完整的可视化交互功能。
-
-启动服务：
+### Web 控制台
 ```bash
 uv run server.py
 ```
-> 💡 提示：服务启动后，浏览器访问 **[http://localhost:8000](http://localhost:8000)**
+访问 `http://localhost:8000`。您可以直接点击 **Quick Start** 示例任务，或上传自己的数据文件。
 
-**特色功能：**
-*   **文件上传：** 直接将 CSV/Excel/PDF 拖入输入框，智能体可直接读取并分析。
-*   **全流程数据分析：** 点击 "Quick Start" 中的数据分析任务，体验从清洗、分析到生成 HTML 图表报告的全自动化流程。
-*   **中文图表支持：** 智能体已配置为优先使用 Plotly 或下载中文字体，确保生成的图表不出现乱码。
-
-### 2. CLI 命令行模式
-
-适合快速测试或无头环境运行。
-
-启动 CLI：
+### CLI 模式
 ```bash
 uv run main.py
 ```
 
 ## 📂 项目结构
 
-*   `agent.py`: `ManusAgent` 核心类。处理 LLM 交互循环、工具调度、Prompt 工程及上下文管理。
-*   `sandbox_e2b.py`: **MCP Server** 实现。负责连接 E2B 沙箱，提供 `run_code`, `run_shell`, `upload_file` 等原子工具。
-*   `server.py`: FastAPI 后端服务。处理 HTTP 请求，管理 WebSocket/SSE 流式输出。
-*   `web/`: 前端单页应用 (SPA)。基于 HTML5 + Tailwind CSS + Vanilla JS 构建，轻量且高性能。
-*   `uploads/`: 临时存储用户上传文件的目录。
+*   `agent.py`: 基于 `deepagents` 的智能体逻辑，注入了专业 UI 模板。
+*   `sandbox_e2b.py`: 原生 E2B 工具集，采用 URL 模式确保复杂应用的预览。
+*   `server.py`: FastAPI 后端，处理 SSE 流和文件上传。
+*   `architecture.canvas`: 可视化架构图。
 
 ## 🛡️ 安全说明
 
-MyManus 具备执行任意代码的能力。
-*   **隔离性：** 所有代码均在 E2B 的 Firecracker MicroVM 中运行，与宿主机完全隔离，确保安全。
-*   **人工监督：** 虽然沙箱是安全的，但建议在处理敏感数据时保持关注。
-
-## 📄 许可证
-
-MIT License
+MyManus 具备在沙箱中执行任意代码的能力。虽然 E2B 提供了极高的隔离性，但仍建议您在运行任务时对智能体的行为保持关注。

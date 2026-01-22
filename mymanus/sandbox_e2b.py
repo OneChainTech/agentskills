@@ -1,72 +1,79 @@
-from mcp.server.fastmcp import FastMCP
+import asyncio
+import base64
+import json
+import os
+from typing import Optional, List, Dict, Any
+
+from langchain_core.tools import tool
+from langchain_core.runnables import RunnableConfig
 from e2b_code_interpreter import AsyncSandbox
 from e2b_desktop import Sandbox as DesktopSandbox
-import asyncio
-import os
-import logging
-import re
-from dotenv import load_dotenv
 
-# Configure logging to stderr to avoid interfering with MCP stdout
-logging.basicConfig(level=logging.ERROR)
-
-# Load env to ensure E2B_API_KEY is available
-load_dotenv()
-
-# Initialize FastMCP
-mcp = FastMCP("E2B_Firecracker_Sandbox")
-
-# Global sandbox instance
-GLOBAL_SANDBOX = None
+# Global Desktop Sandbox (Singleton for Server & Agent)
 GLOBAL_DESKTOP_SANDBOX = None
 DESKTOP_STREAM_STARTED = False
-STATIC_SERVER_PORT = 8000
-SERVER_STARTED = False
 
-async def get_or_create_sandbox():
-    """Get the running E2B sandbox or create a new one."""
-    global GLOBAL_SANDBOX
+# Ensure E2B_API_KEY is available
+if not os.getenv("E2B_API_KEY"):
+    pass
+
+# --- Code Interpreter / Standard Sandbox Helpers ---
+
+def get_sandbox(config: RunnableConfig) -> AsyncSandbox:
+    """Helper to extract sandbox from config."""
+    sandbox = config.get("configurable", {}).get("sandbox")
+    if not sandbox:
+        raise RuntimeError("E2B Sandbox not found in configurable config.")
+    return sandbox
+
+# --- Desktop Sandbox Helpers ---
+
+async def get_or_create_desktop_sandbox() -> DesktopSandbox:
+    """Get the running E2B desktop sandbox or create a new one."""
+    global GLOBAL_DESKTOP_SANDBOX
     
-    # Check if key is set
     if not os.getenv("E2B_API_KEY"):
-        raise RuntimeError("E2B_API_KEY not found in environment variables. Please set it in your .env file.")
+        raise RuntimeError("E2B_API_KEY not found")
 
-    if GLOBAL_SANDBOX:
-        return GLOBAL_SANDBOX
+    if GLOBAL_DESKTOP_SANDBOX:
+        return GLOBAL_DESKTOP_SANDBOX
 
-    # Create new AsyncSandbox
     try:
-        # Use the specific template 'code-interpreter-v1' (nlhz8vlwyupq845jsdg9)
-        GLOBAL_SANDBOX = await AsyncSandbox.create("code-interpreter-v1")
+        # Create Desktop Sandbox (k0wmnzir0zuzye6dndlw is the standard linux desktop template)
+        # We run this in a thread because e2b_desktop might be sync or we want to be safe
+        GLOBAL_DESKTOP_SANDBOX = await asyncio.to_thread(DesktopSandbox.create, "k0wmnzir0zuzye6dndlw")
     except Exception as e:
-        raise RuntimeError(f"Failed to create E2B Sandbox: {e}")
+        raise RuntimeError(f"Failed to create E2B Desktop Sandbox: {e}")
         
-    return GLOBAL_SANDBOX
+    return GLOBAL_DESKTOP_SANDBOX
 
-@mcp.tool()
-async def run_code(code: str) -> str:
+# --- Tools ---
 
+@tool
+async def run_code(code: str, config: RunnableConfig) -> str:
     """
-    Executes Python code in a secure Firecracker MicroVM via E2B.
+    Executes Python code in a secure Firecracker MicroVM.
     Variables are preserved between calls in the same session.
-    
-    Args:
-        code: The Python code to execute.
     """
     try:
-        sb = await get_or_create_sandbox()
-        
+        sb = get_sandbox(config)
         execution = await sb.run_code(code)
         
         output = []
         if execution.logs.stdout:
             output.append("STDOUT:\n" + "\n".join(execution.logs.stdout))
         if execution.logs.stderr:
-            output.append("STDERR:\n" + "\n".join(execution.logs.stderr))
+            # Filter out pip update notices or other non-error warnings if needed
+            filtered_stderr = []
+            for line in execution.logs.stderr:
+                if not line.strip().startswith("[notice]"):
+                     filtered_stderr.append(line)
+            
+            if filtered_stderr:
+                output.append("STDERR:\n" + "\n".join(filtered_stderr))
             
         if execution.results:
             for result in execution.results:
-                # result is an object, we convert to string representation
                 output.append(f"RESULT: {str(result)}")
                 
         if execution.error:
@@ -77,20 +84,15 @@ async def run_code(code: str) -> str:
     except Exception as e:
         return f"E2B Execution Error: {str(e)}"
 
-@mcp.tool()
-async def run_shell_command(command: str, is_background: bool = False) -> str:
+@tool
+async def run_shell_command(command: str, is_background: bool = False, config: RunnableConfig = None) -> str:
     """
     Executes a shell command in the E2B sandbox.
-    
-    Args:
-        command: The shell command to execute (e.g. 'pip install numpy', 'ls -la').
-        is_background: Set to True to run the command in the background (e.g. for starting servers).
     """
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
         
         if is_background:
-            # Execute in background and return PID immediately
             cmd_handle = await sb.commands.run(command, background=True)
             return f"Command '{command}' started in background. PID: {cmd_handle.pid}"
         
@@ -99,8 +101,12 @@ async def run_shell_command(command: str, is_background: bool = False) -> str:
         output = []
         if exec_result.stdout:
             output.append(f"STDOUT:\n{exec_result.stdout}")
+        
         if exec_result.stderr:
-            output.append(f"STDERR:\n{exec_result.stderr}")
+             # Filter out pip update notices
+            filtered_stderr = [line for line in exec_result.stderr.splitlines() if not line.strip().startswith("[notice]")]
+            if filtered_stderr:
+                output.append("STDERR:\n" + "\n".join(filtered_stderr))
             
         if exec_result.exit_code != 0:
             output.append(f"Exit Code: {exec_result.exit_code}")
@@ -110,62 +116,40 @@ async def run_shell_command(command: str, is_background: bool = False) -> str:
     except Exception as e:
         return f"E2B Shell Error: {str(e)}"
 
-@mcp.tool()
-async def restart_sandbox() -> str:
-    """Kills and recreates the E2B sandbox."""
-    global GLOBAL_SANDBOX
-    if GLOBAL_SANDBOX:
-        try:
-            await GLOBAL_SANDBOX.kill()
-        except: pass
-        GLOBAL_SANDBOX = None
-    return "E2B Sandbox restarted (old instance killed)."
-
-@mcp.tool()
-async def list_files(path: str = ".") -> str:
+@tool
+async def list_files(path: str = ".", config: RunnableConfig = None) -> str:
     """List files in the directory."""
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
         files = await sb.files.list(path)
         return "\n".join([f"{f.name} ({f.type})" for f in files])
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
-async def read_file(path: str) -> str:
+@tool
+async def read_file(path: str, config: RunnableConfig) -> str:
     """Read a file as text."""
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
         return await sb.files.read(path)
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
-async def write_file(path: str, content: str) -> str:
-    """
-    Write content to a file in the sandbox.
-    Overwrites the file if it exists.
-    """
+@tool
+async def write_file(path: str, content: str, config: RunnableConfig) -> str:
+    """Write content to a file in the sandbox."""
     try:
-        sb = await get_or_create_sandbox()
-        # e2b write handles creating the file
+        sb = get_sandbox(config)
         await sb.files.write(path, content)
         return f"File '{path}' written successfully."
     except Exception as e:
         return f"Error writing file: {str(e)}"
 
-@mcp.tool()
-async def upload_local_file(local_path: str, remote_path: str = None) -> str:
-    """
-    Uploads a file from the local machine (where the agent is running) to the E2B sandbox.
-    Use this to load user-uploaded files into the analysis environment.
-    
-    Args:
-        local_path: The absolute path to the file on the local server.
-        remote_path: The destination path in the sandbox. Defaults to the filename.
-    """
+@tool
+async def upload_local_file(local_path: str, remote_path: str = None, config: RunnableConfig = None) -> str:
+    """Uploads a file from the local machine to the E2B sandbox."""
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
         
         if not os.path.exists(local_path):
             return f"Error: Local file '{local_path}' not found."
@@ -181,21 +165,22 @@ async def upload_local_file(local_path: str, remote_path: str = None) -> str:
     except Exception as e:
         return f"Error uploading file: {str(e)}"
 
-@mcp.tool()
-async def install_package(package_name: str) -> str:
-    """
-    Install a Python package using pip in the sandbox.
-    """
+@tool
+async def install_package(package_name: str, config: RunnableConfig) -> str:
+    """Install a Python package using pip in the sandbox."""
     try:
-        sb = await get_or_create_sandbox()
-        # Use pip via shell command for reliability
+        sb = get_sandbox(config)
         exec_result = await sb.commands.run(f"pip install {package_name}")
         
         output = []
         if exec_result.stdout:
             output.append(f"STDOUT:\n{exec_result.stdout}")
+        
         if exec_result.stderr:
-            output.append(f"STDERR:\n{exec_result.stderr}")
+            # Filter out pip update notices
+            filtered_stderr = [line for line in exec_result.stderr.splitlines() if not line.strip().startswith("[notice]")]
+            if filtered_stderr:
+                output.append("STDERR:\n" + "\n".join(filtered_stderr))
             
         if exec_result.exit_code != 0:
             output.append(f"Exit Code: {exec_result.exit_code}")
@@ -205,30 +190,73 @@ async def install_package(package_name: str) -> str:
     except Exception as e:
         return f"Error installing package: {str(e)}"
 
-@mcp.tool()
-async def visualize_file(path: str) -> str:
-    """
-    Expose a file via a public URL for visualization.
-    Automatically starts a static file server in the sandbox if needed.
-    """
-    global SERVER_STARTED
+@tool
+async def visualize_file(path: str, config: RunnableConfig) -> str:
+    """Expose a file via a public URL for visualization."""
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
+        STATIC_SERVER_PORT = 8000
         
-        # Start server if not running
-        if not SERVER_STARTED:
-            # We blindly try to start it. If port is taken, it might be us or user.
-            # Using python -m http.server is lightweight and standard.
-            await sb.commands.run(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
-            SERVER_STARTED = True
-            # Give the server a moment to bind the port
-            await asyncio.sleep(2)
+        # Start server if not running (simple check by trying to start it)
+        # We run in background. We add a small delay to ensure it binds.
+        await sb.commands.run(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
+        await asyncio.sleep(2) # Wait for server to bind
             
-        # Get public host
         host = sb.get_host(STATIC_SERVER_PORT)
-        url = f"https://{host}/{path}"
         
-        # Determine MIME type for frontend hint (optional but good for UI logic)
+        # Resolve path relative to CWD using python inside sandbox
+        # This handles absolute paths correctly by making them relative to CWD if possible
+        path_escaped = path.replace('"', '\\"').replace('\n', '\\n')
+        resolve_script = f"""
+import os
+try:
+    path = "{path_escaped}"
+    
+    # Resolve absolute path of the file (relative to current Kernel CWD)
+    abs_path = os.path.abspath(path)
+    
+    # Determine Server Root. 
+    # http.server runs in the shell's default CWD.
+    # We assume this matches the user's HOME directory.
+    server_root = os.environ.get('HOME', '/home/user')
+    
+    # Check if file exists
+    if not os.path.exists(abs_path):
+        print(f"ERROR: File not found: {{abs_path}}")
+    else:
+        # Try to make it relative to Server Root
+        if abs_path.startswith(server_root):
+            rel_path = os.path.relpath(abs_path, server_root)
+            print(rel_path)
+        else:
+            # If it's outside Server Root, symlink it into Server Root
+            filename = os.path.basename(abs_path)
+            dest = os.path.join(server_root, filename)
+            if not os.path.exists(dest):
+                try:
+                    os.symlink(abs_path, dest)
+                    print(filename)
+                except:
+                    # If symlink fails, just try stripping leading slash as fallback
+                    print(path.lstrip('/')) 
+            else:
+                print(filename)
+except Exception as e:
+    print(f"ERROR: {{str(e)}}")
+"""
+        exec_result = await sb.run_code(resolve_script)
+        
+        output_line = ""
+        if exec_result.logs.stdout:
+            output_line = exec_result.logs.stdout[0].strip()
+            
+        if output_line.startswith("ERROR:"):
+            return output_line
+            
+        # Use the resolved relative path
+        relative_path = output_line if output_line else path.lstrip('/')
+        url = f"https://{host}/{relative_path}"
+        
         ext = path.split('.')[-1].lower() if '.' in path else 'txt'
         mime = "text/plain"
         if ext == "html": mime = "text/html"
@@ -237,50 +265,32 @@ async def visualize_file(path: str) -> str:
         elif ext == "svg": mime = "image/svg+xml"
         elif ext == "json": mime = "application/json"
         elif ext == "md": mime = "text/markdown"
+        elif ext == "csv": mime = "text/csv"
+        elif ext == "pdf": mime = "application/pdf"
         
-        import json
         return json.dumps({
             "type": "file_preview",
             "path": path,
-            "mime": "url", # Frontend handles this as an iframe src
+            "mime": "url",
             "content": url
         })
         
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
-async def get_public_url(port: int) -> str:
+@tool
+async def get_public_url(port: int, config: RunnableConfig) -> str:
     """Get a public URL for a port exposed in the sandbox."""
     try:
-        sb = await get_or_create_sandbox()
+        sb = get_sandbox(config)
         host = sb.get_host(port)
         return f"https://{host}"
     except Exception as e:
         return f"Error: {str(e)}"
 
-# --- Desktop Sandbox Tools ---
+# --- Desktop Tools (for Agent & Server) ---
 
-async def get_or_create_desktop_sandbox():
-    """Get the running E2B desktop sandbox or create a new one."""
-    global GLOBAL_DESKTOP_SANDBOX
-    
-    if not os.getenv("E2B_API_KEY"):
-        raise RuntimeError("E2B_API_KEY not found")
-
-    if GLOBAL_DESKTOP_SANDBOX:
-        return GLOBAL_DESKTOP_SANDBOX
-
-    try:
-        # Use the specific desktop template 'k0wmnzir0zuzye6dndlw'
-        # Run synchronous create in a thread
-        GLOBAL_DESKTOP_SANDBOX = await asyncio.to_thread(DesktopSandbox.create, "k0wmnzir0zuzye6dndlw")
-    except Exception as e:
-        raise RuntimeError(f"Failed to create E2B Desktop Sandbox: {e}")
-        
-    return GLOBAL_DESKTOP_SANDBOX
-
-@mcp.tool()
+@tool
 async def desktop_get_stream_url() -> str:
     """Get the desktop stream URL for viewing."""
     global DESKTOP_STREAM_STARTED
@@ -293,31 +303,29 @@ async def desktop_get_stream_url() -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_take_screenshot() -> str:
     """Take a screenshot and return base64 string."""
     try:
         sb = await get_or_create_desktop_sandbox()
         import base64
-        # SDK likely returns bytes. Run in thread.
         screenshot_bytes = await asyncio.to_thread(sb.screenshot)
         return base64.b64encode(screenshot_bytes).decode('utf-8')
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_left_click(x: int, y: int) -> str:
     """Move mouse to (x, y) and left click."""
     try:
         sb = await get_or_create_desktop_sandbox()
-        # Flattened API: move_mouse, left_click
         await asyncio.to_thread(sb.move_mouse, x, y)
         await asyncio.to_thread(sb.left_click)
         return f"Clicked at ({x}, {y})"
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_double_click(x: int, y: int) -> str:
     """Move mouse to (x, y) and double click."""
     try:
@@ -328,7 +336,7 @@ async def desktop_double_click(x: int, y: int) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
         
-@mcp.tool()
+@tool
 async def desktop_right_click(x: int, y: int) -> str:
     """Move mouse to (x, y) and right click."""
     try:
@@ -339,19 +347,17 @@ async def desktop_right_click(x: int, y: int) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_type(text: str) -> str:
     """Type text."""
     try:
         sb = await get_or_create_desktop_sandbox()
-        # Assuming 'write' is the method for typing based on dir(Sandbox) having 'write' and 'press'
-        # Wait, dir(Sandbox) has 'write' and 'press'. 'write' usually means typing string.
         await asyncio.to_thread(sb.write, text)
         return f"Typed: {text}"
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_press(key: str) -> str:
     """Press a key (e.g. 'Enter', 'Space', 'Backspace')."""
     try:
@@ -361,7 +367,7 @@ async def desktop_press(key: str) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_scroll(amount: int) -> str:
     """Scroll mouse wheel (positive for up, negative for down)."""
     try:
@@ -371,7 +377,7 @@ async def desktop_scroll(amount: int) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-@mcp.tool()
+@tool
 async def desktop_open_app(app_name: str) -> str:
     """Launch an application."""
     try:
@@ -381,5 +387,24 @@ async def desktop_open_app(app_name: str) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-if __name__ == "__main__":
-    mcp.run()
+# Export list of tools
+TOOLS = [
+    run_code,
+    run_shell_command,
+    list_files,
+    read_file,
+    write_file,
+    upload_local_file,
+    install_package,
+    visualize_file,
+    get_public_url,
+    desktop_get_stream_url,
+    desktop_take_screenshot,
+    desktop_left_click,
+    desktop_double_click,
+    desktop_right_click,
+    desktop_type,
+    desktop_press,
+    desktop_scroll,
+    desktop_open_app
+]

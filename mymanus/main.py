@@ -3,6 +3,8 @@ import os
 import sys
 from rich.console import Console
 from rich.prompt import Prompt
+from rich.markdown import Markdown
+from rich.panel import Panel
 from dotenv import load_dotenv
 from agent import ManusAgent
 
@@ -12,7 +14,7 @@ load_dotenv()
 console = Console()
 
 async def main():
-    console.print("[bold magenta]Welcome to MyManus (Microsandbox Edition)[/bold magenta]")
+    console.print(Panel.fit("[bold magenta]Welcome to MyManus (LangGraph Edition)[/bold magenta]", border_style="magenta"))
     console.print("Type 'exit' or 'quit' to stop.")
     
     # Check for API Key
@@ -36,29 +38,54 @@ async def main():
             console.print(f"[bold green]Manus Agent received task:[/bold green] {user_input}")
             
             # Consume the generator
+            current_thought = ""
+            
             async for event in agent.run(user_input):
                 event_type = event.get("type")
-                if event_type == "status":
-                    console.print(f"[dim]{event.get('message')}[/dim]")
-                elif event_type == "code":
-                    console.print("[bold blue]Generated Code:[/bold blue]")
-                    console.print(event.get("content"), style="cyan")
+                
+                if event_type == "thought":
+                    # Stream thought content
+                    content = event.get("content")
+                    current_thought += content
+                    # We could print streaming, but for simplicity let's just print chunks or use a live display
+                    # For CLI, let's just print simple chunks to avoid messing up the terminal
+                    console.print(content, end="", style="dim")
+                    
+                elif event_type == "status":
+                    # New line before status
+                    if current_thought:
+                        console.print() 
+                        current_thought = ""
+                    console.print(f"[yellow]>> {event.get('message')}[/yellow]")
+                    
                 elif event_type == "output":
-                    console.print("[bold]Execution Result:[/bold]")
-                    console.print(event.get("content"), style="white on black")
-                elif event_type == "answer":
-                    console.print("\n[bold yellow]Agent Answer:[/bold yellow]")
-                    console.print(event.get("content"))
+                    if current_thought:
+                        console.print()
+                        current_thought = ""
+                    console.print(Panel(event.get("content"), title="Tool Output", border_style="blue"))
+                    
+                elif event_type == "preview":
+                    console.print(f"[bold green]File Preview:[/bold green] {event.get('content')}")
+                    
                 elif event_type == "error":
-                    console.print(f"[red]Error: {event.get('message')}[/red]")
+                    console.print(f"[bold red]Error: {event.get('message')}[/bold red]")
+                    
                 elif event_type == "success":
-                    console.print(f"[bold green]{event.get('message')}[/bold green]")
+                    if current_thought:
+                        console.print()
+                    console.print(Panel(event.get("message"), style="bold green"))
+
+            # End of run
+            if current_thought:
+                console.print()
 
         except KeyboardInterrupt:
             console.print("\nExiting...")
             break
         except Exception as e:
             console.print(f"[red]An error occurred: {e}[/red]")
+            import traceback
+            traceback.print_exc()
 
 if __name__ == "__main__":
     try:

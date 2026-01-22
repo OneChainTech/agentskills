@@ -1,0 +1,88 @@
+{
+  "nodes": [
+    {
+      "id": "ui-layer",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 220,
+      "text": "# UI Layer (Web Console)\n- **Unified Entry**: Mission Input + File Upload\n- **Visualizer**: Clean Step Cards (non-streaming)\n- **Live Previews**: Iframe (URL based, auto-refresh)\n- **Design**: Glassmorphism + Swiss Modernism",
+      "color": "5"
+    },
+    {
+      "id": "api-layer",
+      "type": "text",
+      "x": 400,
+      "y": 0,
+      "width": 300,
+      "height": 220,
+      "text": "# API Layer (FastAPI)\n- **SSE Pipeline**: Real-time event transport\n- **Static Server**: Serves sandbox-generated artifacts\n- **Session Mng**: Config management for agents",
+      "color": "2"
+    },
+    {
+      "id": "orchestrator",
+      "type": "text",
+      "x": 800,
+      "y": 0,
+      "width": 350,
+      "height": 250,
+      "text": "# Orchestrator (Deep Agents Factory)\n- **Engine**: `deepagents.create_deep_agent`\n- **Protocol**: LangGraph 1.0 State Machine\n- **Auto-Show Policy**: Automatic `visualize_file` calling\n- **UI Templates**: Injected Swiss Modernism skeleton",
+      "color": "6"
+    },
+    {
+      "id": "intelligence",
+      "type": "text",
+      "x": 800,
+      "y": 300,
+      "width": 350,
+      "height": 150,
+      "text": "# Intelligence (LLM)\n- **Model**: DeepSeek-V3 / Qwen-2.5\n- **Protocol**: OpenAI Compatible\n- **Logic**: Planning -> Coding -> Refinement",
+      "color": "1"
+    },
+    {
+      "id": "execution",
+      "type": "text",
+      "x": 1250,
+      "y": 0,
+      "width": 300,
+      "height": 220,
+      "text": "# Execution (Secure VM)\n- **Sandbox**: E2B Firecracker\n- **Web Service**: Sandbox-internal Python HTTP Server\n- **Port Binding**: Maps port 8000 to public URL",
+      "color": "3"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "ui-layer",
+      "fromSide": "right",
+      "toNode": "api-layer",
+      "toSide": "left",
+      "label": "SSE / POST"
+    },
+    {
+      "id": "e2",
+      "fromNode": "api-layer",
+      "fromSide": "right",
+      "toNode": "orchestrator",
+      "toSide": "left",
+      "label": "Invoke Graph"
+    },
+    {
+      "id": "e3",
+      "fromNode": "orchestrator",
+      "fromSide": "bottom",
+      "toNode": "intelligence",
+      "toSide": "top",
+      "label": "Reasoning"
+    },
+    {
+      "id": "e4",
+      "fromNode": "orchestrator",
+      "fromSide": "right",
+      "toNode": "execution",
+      "toSide": "left",
+      "label": "Tool Calls"
+    }
+  ]
+}

@@ -165,11 +165,9 @@
             <div class="ml-auto flex items-center gap-3">
                  <!-- Theme Toggle -->
                  <button id="themeToggle" class="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors focus:outline-none">
-                    <!-- Sun Icon (Hidden in Dark) -->
                     <svg id="sunIcon" class="w-4 h-4 hidden dark:block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                     </svg>
-                    <!-- Moon Icon (Hidden in Light) -->
                     <svg id="moonIcon" class="w-4 h-4 block dark:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
@@ -193,21 +191,26 @@
                     <label for="taskInput" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
                         Mission
                     </label>
-                    <label class="cursor-pointer group/attach flex items-center justify-center p-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200 dark:border-slate-700 transition-all shadow-sm">
-                        <input type="file" id="fileInput" class="hidden" multiple />
-                        <svg class="w-4 h-4 text-slate-400 group-hover/attach:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                        </svg>
-                    </label>
                 </div>
                 <div class="relative group flex-1 flex flex-col gap-3">
                     <textarea 
                         id="taskInput" 
                         class="w-full flex-1 min-h-[130px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
-                        placeholder="Initialize task sequence...&#10;&#10;Describe your goal clearly. I can run code, visualize data, and explore the web."
+                        placeholder="Initialize task sequence..."
                         spellcheck="false"
                     ></textarea>
-                    <div id="fileChips" class="flex flex-wrap gap-2 px-1 py-1"></div>
+                    
+                    <!-- File Upload Button (Below Input) -->
+                    <div class="flex items-center gap-2">
+                        <label class="cursor-pointer group/attach flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-white/10 transition-all shadow-sm active:scale-95">
+                            <input type="file" id="fileInput" class="hidden" multiple />
+                            <svg class="w-4 h-4 text-slate-400 group-hover/attach:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            <span class="text-xs font-medium text-slate-500 group-hover/attach:text-slate-700 dark:group-hover/attach:text-slate-300">Add Files</span>
+                        </label>
+                        <div id="fileChips" class="flex flex-wrap gap-2"></div>
+                    </div>
                 </div>
             </div>
 
@@ -217,83 +220,59 @@
                     Quick Start
                 </label>
                 <div class="grid grid-cols-1 gap-2">
-                    <!-- Type 1: Core Code Interpretation -->
-                    <button onclick="setTask('Code Interpretation Task: Analyze Data. Generate a synthetic dataset of daily temperatures for one year using Python (numpy). Calculate the monthly moving average and plot the original data vs. the moving average using Matplotlib. Save the chart as \'weather.png\' and visualize it.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
+                    <!-- Type 1: Data Analysis -->
+                    <button onclick="setTask('生成一份过去一年的模拟销售数据（日期、销量、利润），分析月度趋势并使用 Plotly 画出交互式折线图报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
                         <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">Code Interpretation</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Data Analysis & Plotting</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">数据分析</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Pandas + Plotly 可视化</div>
                             </div>
                         </div>
                     </button>
 
-                    <!-- Type 2: File System Operations -->
-                    <button onclick="setTask('File System Task: Data Processing. Create a CSV file named \'users.csv\' with 5 fake user records (columns: id, name, role, email). Then read this file back using Python, filter for users with the \'Manager\' role, and save the filtered list to a new file \'managers.json\'. Visualize the JSON file.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700">
+                    <!-- Type 2: Web App -->
+                    <button onclick="setTask('帮我写一个网页版的贪吃蛇游戏。要求：单文件 HTML，使用 Canvas 绘图，样式美观，支持键盘上下左右控制。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">File System Ops</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Read, Write & Convert Data</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">贪吃蛇游戏</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">生成 HTML5 游戏</div>
                             </div>
                         </div>
                     </button>
 
-                    <!-- Type 3: Process & Command Execution -->
-                    <button onclick="setTask('System Task: Environment Setup. 1. Check the Linux distribution version (cat /etc/os-release). 2. Install the python package \'pyfiglet\'. 3. Use pyfiglet to print \'E2B SANDBOX\' in large ASCII art to the terminal.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700">
+                    <!-- Type 3: System Ops -->
+                    <button onclick="setTask('列出当前目录下的所有文件，创建一个名为 hello.txt 的文件写入当前时间，然后读取它并展示内容。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">Process & Commands</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Shell & Package Management</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">文件操作</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Shell & 文件系统</div>
                             </div>
                         </div>
                     </button>
 
-                    <!-- Type 4: Networking & Port Mapping -->
-                    <button onclick="setTask('Networking Task: Web Deployment. 1. Create a file \'app.py\' with a simple FastAPI hello-world app. 2. Start the app in the background on port 8000 using uvicorn. 3. Generate and display the public URL to access this service.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
+                    <!-- Type 4: Upload Analysis -->
+                    <button onclick="setTask('自动识别当前目录下用户上传的数据文件（CSV 或 Excel），分析其核心指标并使用 Plotly 绘制图表，最后生成一份精美的数据分析报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
-                            </span>
-                            <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">Networking</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Expose Ports & Web Apps</div>
-                            </div>
-                        </div>
-                    </button>
-
-                    <!-- Type 5: Full Cycle Data Analysis -->
-                    <button onclick="setTask('Analyze the uploaded data. 1. Clean the data. 2. Create professional visualizations. 3. Generate and visualize a \'report.html\' containing the insights and charts.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-rose-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-rose-300 dark:hover:border-rose-700">
-                         <div class="flex items-center gap-3">
-                            <span class="p-1.5 rounded-md bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400">CSV Analysis & Report</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Upload, Analyze, Chart & HTML</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">上传数据分析</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">自动分析 CSV/Excel</div>
                             </div>
                         </div>
                     </button>
-
-                    <!-- Type 6: Streamlit App -->
-                    <button onclick="setTask('Streamlit App: Build & Deploy. 1. Install \'streamlit\'. 2. Create \'app.py\' with a title, slider, and a line chart. 3. Run it in background: \'streamlit run app.py --server.port 8501 --server.headless true &\'. 4. Get the public URL for port 8501.')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-red-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-red-300 dark:hover:border-red-700">
-                         <div class="flex items-center gap-3">
-                            <span class="p-1.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            </span>
-                            <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-red-600 dark:group-hover:text-red-400">Streamlit App</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Interactive Web Apps</div>
-                            </div>
-                        </div>
-                    </button>
+                </div>
+            </div>
                 </div>
             </div>
 
@@ -669,66 +648,60 @@
             });
         };
 
-        function appendThought(content) {
-            if (!currentTurnDiv) return;
-            
-            const div = document.createElement('div');
-            div.className = 'prose dark:prose-invert prose-sm max-w-none text-slate-600 dark:text-slate-300 leading-relaxed';
-            let html = content
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-slate-100">$1</strong>')
-                .replace(/`(.*?)`/g, '<code class="bg-slate-100 dark:bg-slate-900 px-1 py-0.5 rounded text-pink-500 font-mono text-xs">$1</code>')
-                .replace(/\n/g, '<br>');
-            div.innerHTML = html;
-            currentTurnDiv.appendChild(div);
-        }
+        const toolNameMap = {
+            'run_code': 'Executing Python',
+            'run_shell_command': 'Running Shell',
+            'write_file': 'Saving File',
+            'read_file': 'Reading File',
+            'list_files': 'Listing Directory',
+            'install_package': 'Installing Library',
+            'visualize_file': 'Generating Artifact',
+            'get_public_url': 'Exposing Port',
+            'default': 'Processing'
+        };
 
         function appendAction(toolName, args) {
             if (!currentTurnDiv) return;
 
             const div = document.createElement('div');
-            div.className = 'group flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-blue-100 dark:border-blue-900/30 transition-all';
+            div.className = 'group flex flex-col gap-1 p-3 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm transition-all hover:border-blue-200 dark:hover:border-blue-900/50';
             
             const iconMap = {
-                'run_code': '<svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>',
-                'run_shell_command': '<svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>',
-                'write_file': '<svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>',
-                'visualize_file': '<svg class="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>',
-                'default': '<svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>'
+                'run_code': '<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>',
+                'run_shell_command': '<svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>',
+                'visualize_file': '<svg class="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>',
+                'default': '<svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>'
             };
             const icon = iconMap[toolName] || iconMap['default'];
+            const displayName = toolNameMap[toolName] || toolName;
+
+            // Extract preview text from args
+            let previewText = "";
+            if (args) {
+                const content = args.code || args.command || args.path || args.package_name || "";
+                previewText = content.substring(0, 50).replace(/\n/g, ' ') + (content.length > 50 ? '...' : '');
+            }
 
             div.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <div class="p-1.5 bg-white dark:bg-slate-800 rounded-md shadow-sm border border-slate-100 dark:border-slate-700">
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-md">
                         ${icon}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">${toolName}</span>
-                            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 status-badge">
-                                <svg class="animate-spin h-3 w-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span class="text-[10px] font-medium text-blue-600 dark:text-blue-400">Executing...</span>
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-semibold text-xs text-slate-700 dark:text-slate-200">${displayName}</span>
+                            <div class="status-badge">
+                                <span class="relative flex h-2 w-2">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                </span>
                             </div>
                         </div>
+                        ${previewText ? `<div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 truncate">${previewText}</div>` : ''}
                     </div>
                 </div>
             `;
             
-            if (args && (args.code || args.command)) {
-                const code = args.code || args.command;
-                const codeBlock = document.createElement('div');
-                codeBlock.className = 'mt-2 pl-11';
-                codeBlock.innerHTML = `
-                    <div class="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-black/30 p-2.5 rounded-md border border-slate-100 dark:border-slate-800 overflow-x-auto whitespace-pre">
-                        ${code.substring(0, 300)}${code.length > 300 ? '...' : ''}
-                    </div>
-                `;
-                div.appendChild(codeBlock);
-            }
-
             currentTurnDiv.appendChild(div);
             return div; 
         }
@@ -738,32 +711,29 @@
             const badge = actionEl.querySelector('.status-badge');
             
             if (success) {
-                badge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50';
-                badge.innerHTML = `
-                    <svg class="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                    <span class="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">Success</span>
-                `;
+                badge.innerHTML = `<svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>`;
             } else {
-                badge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800/50';
-                badge.innerHTML = `
-                    <svg class="w-3 h-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    <span class="text-[10px] font-medium text-red-600 dark:text-red-400">Failed</span>
-                `;
+                badge.innerHTML = `<svg class="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>`;
             }
-            
-            if (result && result !== '(No output)') {
-                const resultDiv = document.createElement('div');
-                resultDiv.className = 'mt-2 pl-11 text-xs text-slate-500 dark:text-slate-400 font-mono border-l-2 border-slate-200 dark:border-slate-700 pl-3 ml-1.5 opacity-80';
-                const shortResult = result.length > 300 ? result.substring(0, 300) + '...' : result;
-                resultDiv.textContent = shortResult;
-                actionEl.appendChild(resultDiv);
+
+            // Display a distinct result area if it's not a system/preview JSON
+            if (result && !result.trim().startsWith('{')) {
+                const resultBlock = document.createElement('div');
+                resultBlock.className = 'mt-2.5 pt-2 border-t border-slate-50 dark:border-slate-800';
+                resultBlock.innerHTML = `
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono leading-relaxed bg-slate-50 dark:bg-black/30 p-2.5 rounded border-l-2 border-slate-200 dark:border-slate-700">
+                        ${result.substring(0, 200).replace(/\n/g, '<br>')}
+                        ${result.length > 200 ? '...' : ''}
+                    </div>
+                `;
+                actionEl.appendChild(resultBlock);
             }
         }
 
         let lastActionEl = null;
 
         async function handleEvent(event) {
-            // -- Terminal Log --
+            // -- Terminal Log (Keep these for the "Terminal" tab debug view) --
             switch(event.type) {
                 case 'system': await appendLog(event.message, 'dim'); break;
                 case 'status': await appendLog(event.message, 'system'); break;
@@ -791,21 +761,17 @@
                     logsContainer.appendChild(answerBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
 
-                    // Add to Workflow
+                    // Add Answer to Workflow
                     if (currentTurnDiv) {
                         const div = document.createElement('div');
-                        div.className = 'mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg text-sm text-slate-700 dark:text-slate-200 leading-relaxed shadow-sm';
-                        // Simple formatting
-                        let html = event.content
-                            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-slate-900 dark:text-white">$1</strong>')
-                            .replace(/`(.*?)`/g, '<code class="bg-white dark:bg-slate-800 px-1 py-0.5 rounded text-pink-500 font-mono text-xs">$1</code>')
-                            .replace(/\n/g, '<br>');
-                        div.innerHTML = `<div class="flex items-center gap-2 mb-2 text-green-600 dark:text-green-400 font-bold text-xs uppercase tracking-wider">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        div.className = 'mt-3 p-3 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-300 leading-relaxed';
+                        div.innerHTML = `<div class="flex items-center gap-2 mb-1 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tighter">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             Task Completed
-                        </div>${html}`;
+                        </div>${event.content.substring(0, 200)}${event.content.length > 200 ? '...' : ''}`;
                         currentTurnDiv.appendChild(div);
                         workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
+                        document.querySelectorAll('.turn-card').forEach(card => card.classList.remove('animate-pulse-border'));
                     }
                     break;
                 case 'error': await appendLog(event.message, 'error'); break;
@@ -833,9 +799,10 @@
                 }
             }
             
-            if (event.type === 'thought') {
-                appendThought(event.content);
-            }
+            // IGNORE THOUGHTS IN VISUALIZER
+            // if (event.type === 'thought') {
+            //    appendThought(event.content);
+            // }
 
             if (event.type === 'output') {
                  if (lastActionEl) {
@@ -871,16 +838,14 @@
                  // Add a Preview Card to the workflow
                  if (currentTurnDiv) {
                     const div = document.createElement('div');
-                    div.className = 'mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-black shadow-sm';
+                    div.className = 'mt-4 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-black shadow-lg animate-in zoom-in-95 duration-500';
                     
-                    const header = document.createElement('div');
-                    header.className = 'px-3 py-2 bg-slate-200 dark:bg-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400 flex justify-between';
-                    header.innerHTML = `<span>${event.path || 'Preview'}</span><span>${event.mime || ''}</span>`;
-                    div.appendChild(header);
-
-                    const contentArea = document.createElement('div');
-                    contentArea.className = 'relative';
-                    contentArea.style.height = '400px'; // Taller preview
+                    div.innerHTML = `
+                        <div class="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                            <span>${event.path || 'Artifact'}</span>
+                        </div>
+                        <div class="relative h-[400px] iframe-container"></div>
+                    `;
                     
                     const iframe = document.createElement('iframe');
                     iframe.className = 'w-full h-full border-none bg-white';
@@ -897,10 +862,8 @@
                     } else {
                         iframe.srcdoc = `<pre style="padding:20px;white-space:pre-wrap;font-family:monospace;color:#333;font-size:12px;">${event.content}</pre>`;
                     }
-                    
-                    contentArea.appendChild(iframe);
-                    div.appendChild(contentArea);
-                    
+
+                    div.querySelector('.iframe-container').appendChild(iframe);
                     currentTurnDiv.appendChild(div);
                     workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
                     
