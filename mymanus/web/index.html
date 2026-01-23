@@ -221,53 +221,53 @@
                 </label>
                 <div class="grid grid-cols-1 gap-2">
                     <!-- Type 1: Data Analysis -->
-                    <button onclick="setTask('生成一份过去一年的模拟销售数据（日期、销量、利润），分析月度趋势并使用 Plotly 画出交互式折线图报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
+                    <button onclick="setTask('生成一份包含 [日期, 地区, 产品类别, 销售额, 利润] 的模拟电商数据（1000条），使用 Plotly 绘制一个交互式的旭日图（Sunburst Chart）展示各地区和类别的销售占比，并保存为 HTML 报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
                         <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">数据分析</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Pandas + Plotly 可视化</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">深度数据洞察</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Pandas + Plotly Sunburst</div>
                             </div>
                         </div>
                     </button>
 
-                    <!-- Type 2: Web App -->
-                    <button onclick="setTask('帮我写一个网页版的贪吃蛇游戏。要求：单文件 HTML，使用 Canvas 绘图，样式美观，支持键盘上下左右控制。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700">
+                    <!-- Type 2: 3D Web App -->
+                    <button onclick="setTask('编写一个具有赛博朋克风格（Cyberpunk）的 3D 旋转立方体网页。要求：使用 Three.js（CDN引入），背景为深色，立方体带有霓虹发光效果，支持鼠标拖拽旋转。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-emerald-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                            </span>
-                            <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">贪吃蛇游戏</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">生成 HTML5 游戏</div>
-                            </div>
-                        </div>
-                    </button>
-
-                    <!-- Type 3: System Ops -->
-                    <button onclick="setTask('列出当前目录下的所有文件，创建一个名为 hello.txt 的文件写入当前时间，然后读取它并展示内容。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700">
-                         <div class="flex items-center gap-3">
-                            <span class="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">文件操作</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Shell & 文件系统</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">3D 交互网页</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Three.js + WebGL 渲染</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Type 3: Desktop Automation -->
+                    <button onclick="setTask('帮我打开 Firefox 浏览器，访问 &quot;https://news.ycombinator.com&quot;。等页面加载一会儿后，截一张图给我看看。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">浏览器自动化</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">E2B Desktop + Screenshot</div>
                             </div>
                         </div>
                     </button>
 
                     <!-- Type 4: Upload Analysis -->
-                    <button onclick="setTask('自动识别当前目录下用户上传的数据文件（CSV 或 Excel），分析其核心指标并使用 Plotly 绘制图表，最后生成一份精美的数据分析报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
+                    <button onclick="setTask('请读取我上传的数据文件（CSV/Excel），分析数据的基本统计信息（行数、列名、缺失值），并针对数值列绘制分布直方图。最后，请遵循 UI/UX Pro Max 规范生成一份专业的 HTML 可视化报告，并调用可视化工具展示。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">上传数据分析</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">自动分析 CSV/Excel</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">智能文件分析</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">自动生成专业 HTML 报告</div>
                             </div>
                         </div>
                     </button>
@@ -683,8 +683,8 @@
             }
 
             div.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <div class="mt-0.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-md">
+                <div class="flex items-center gap-3">
+                    <div class="p-1.5 bg-slate-100 dark:bg-slate-900 rounded-md shrink-0">
                         ${icon}
                     </div>
                     <div class="flex-1 min-w-0">

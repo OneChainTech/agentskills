@@ -1,0 +1,148 @@
+{
+	"nodes": [
+		{
+			"id": "user-browser",
+			"type": "text",
+			"text": "## 👤 User / Browser\n**Interactions:**\n- Chat Input\n- File Drag & Drop\n- View Live Artifacts\n- Control Desktop Stream",
+			"x": -600,
+			"y": 0,
+			"width": 300,
+			"height": 220,
+			"color": "4"
+		},
+		{
+			"id": "fastapi-server",
+			"type": "text",
+			"text": "## 🌐 FastAPI Server\n`server.py`\n\n**Endpoints:**\n- `POST /api/run` (Start Task)\n- `POST /api/upload` (File Ingestion)\n- `SSE /api/run` (Real-time Stream)\n- `Static` (Serve Web Assets)",
+			"x": -150,
+			"y": 0,
+			"width": 320,
+			"height": 260,
+			"color": "2"
+		},
+		{
+			"id": "manus-agent",
+			"type": "text",
+			"text": "## 🧠 Manus Agent\n`agent.py`\n\n**Logic:**\n- **LangGraph State Machine**\n- **Planner:** ReAct / Thought Loop\n- **Memory:** Short-term Context\n- **LLM:** DeepSeek-V3",
+			"x": 300,
+			"y": -150,
+			"width": 300,
+			"height": 220,
+			"color": "1"
+		},
+		{
+			"id": "tools-layer",
+			"type": "text",
+			"text": "## 🛠️ Tool Interface\n`sandbox_e2b.py`\n\n**Capabilities:**\n- `run_code(python)`\n- `run_shell(bash)`\n- `visualize_file(path)`\n- `desktop_*(mouse/key)`",
+			"x": 300,
+			"y": 150,
+			"width": 300,
+			"height": 200,
+			"color": "6"
+		},
+		{
+			"id": "e2b-code",
+			"type": "text",
+			"text": "## 📦 E2B Code Sandbox\n**Secure MicroVM**\n\n- **Python Runtime:** 3.12+\n- **Pip:** Install any package\n- **Filesystem:** Persist generated files",
+			"x": 750,
+			"y": -100,
+			"width": 320,
+			"height": 180,
+			"color": "3"
+		},
+		{
+			"id": "e2b-desktop",
+			"type": "text",
+			"text": "## 🖥️ E2B Desktop Sandbox\n**Linux X11 Environment**\n\n- **Browser:** Chrome / Firefox\n- **GUI Automation:** PyAutoGUI\n- **Stream:** WebRTC/VNC",
+			"x": 750,
+			"y": 150,
+			"width": 320,
+			"height": 180,
+			"color": "3"
+		},
+		{
+			"id": "artifacts",
+			"type": "text",
+			"text": "## 📄 Artifacts\n**Generated Content**\n\n- HTML Reports\n- Images / Charts\n- Downloadable Files",
+			"x": -150,
+			"y": 350,
+			"width": 320,
+			"height": 140,
+			"color": "5"
+		}
+	],
+	"edges": [
+		{
+			"id": "e1",
+			"fromNode": "user-browser",
+			"fromSide": "right",
+			"toNode": "fastapi-server",
+			"toSide": "left",
+			"label": "HTTP / SSE Stream"
+		},
+		{
+			"id": "e2",
+			"fromNode": "fastapi-server",
+			"fromSide": "right",
+			"toNode": "manus-agent",
+			"toSide": "left",
+			"label": "Invoke Agent"
+		},
+		{
+			"id": "e3",
+			"fromNode": "manus-agent",
+			"fromSide": "bottom",
+			"toNode": "tools-layer",
+			"toSide": "top",
+			"label": "Call Tools"
+		},
+		{
+			"id": "e4",
+			"fromNode": "tools-layer",
+			"fromSide": "right",
+			"toNode": "e2b-code",
+			"toSide": "left",
+			"label": "Execute Code"
+		},
+		{
+			"id": "e5",
+			"fromNode": "tools-layer",
+			"fromSide": "right",
+			"toNode": "e2b-desktop",
+			"toSide": "left",
+			"label": "Control Desktop"
+		},
+		{
+			"id": "e6",
+			"fromNode": "e2b-code",
+			"fromSide": "left",
+			"toNode": "fastapi-server",
+			"toSide": "right",
+			"label": "Return Output / Files"
+		},
+		{
+			"id": "e7",
+			"fromNode": "e2b-desktop",
+			"fromSide": "bottom",
+			"toNode": "user-browser",
+			"toSide": "bottom",
+			"label": "Stream Video (Direct/Proxy)"
+		},
+		{
+			"id": "e8",
+			"fromNode": "fastapi-server",
+			"fromSide": "bottom",
+			"toNode": "artifacts",
+			"toSide": "top",
+			"label": "Serve Static"
+		},
+		{
+			"id": "e9",
+			"fromNode": "artifacts",
+			"fromSide": "left",
+			"toNode": "user-browser",
+			"toSide": "right",
+			"label": "Render in Iframe"
+		}
+	]
+}

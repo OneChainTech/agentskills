@@ -30,6 +30,10 @@ app.add_middleware(
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Download directory (for artifacts retrieved from sandbox)
+DOWNLOAD_DIR = os.path.join(os.getcwd(), "downloads")
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
 class TaskRequest(BaseModel):
     task: str
     files: Optional[List[str]] = []
@@ -174,6 +178,7 @@ async def run_task(request: TaskRequest):
 
 # Serve static files (the web interface)
 app.mount("/", StaticFiles(directory="web", html=True), name="static")
+app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
 if __name__ == "__main__":
     import uvicorn
