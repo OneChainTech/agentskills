@@ -1,5 +1,6 @@
 import json
 import asyncio
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -16,7 +17,21 @@ import sandbox_e2b
 # Load environment variables
 load_dotenv()
 
-app = FastAPI()
+# Global Agent Instance
+agent_instance = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    global agent_instance
+    agent_instance = ManusAgent()
+    yield
+    # Shutdown
+    print("Shutting down agent and sandbox...")
+    if agent_instance:
+        await agent_instance.close()
+
+app = FastAPI(lifespan=lifespan)
 
 # Allow CORS for development convenience
 app.add_middleware(
@@ -50,7 +65,8 @@ def upload_file(file: UploadFile = File(...)):
 
 @app.post("/api/run")
 async def run_task(request: TaskRequest):
-    agent = ManusAgent()
+    # Use global agent instance
+    agent = agent_instance
     
     # Inject file context if files exist
     prompt = request.task

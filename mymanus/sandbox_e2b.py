@@ -303,19 +303,54 @@ async def get_public_url(port: int, config: RunnableConfig) -> str:
     Get a public URL for a port exposed in the sandbox.
     Use this to display running web applications (Streamlit, Flask, Django, etc.) to the user.
     """
+    sb = get_sandbox(config)
+    
+    # Generate URL (E2B host generation is usually static/instant)
     try:
-        sb = get_sandbox(config)
         host = sb.get_host(port)
         url = f"https://{host}"
-        
-        return json.dumps({
-            "type": "file_preview",
-            "path": f"Port {port}",
-            "mime": "url",
-            "content": url
-        })
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error getting host: {str(e)}"
+
+    # Wait for the service to actually be ready (up to 30 seconds)
+    # This prevents the "502 Bad Gateway" or "No service running" error from E2B proxy
+    check_script = f"""
+import socket
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1)
+    result = s.connect_ex(('127.0.0.1', {port}))
+    s.close()
+    print(result == 0)
+except:
+    print("False")
+"""
+    
+    for i in range(30):
+        try:
+            # Check if port is open inside the sandbox
+            exec_result = await sb.run_code(check_script)
+            is_open = exec_result.logs.stdout and "True" in exec_result.logs.stdout[0]
+            
+            if is_open:
+                return json.dumps({
+                    "type": "file_preview",
+                    "path": f"Port {port}",
+                    "mime": "url",
+                    "content": url
+                })
+        except:
+            pass
+            
+        await asyncio.sleep(1)
+            
+    # If timeout, return anyway (maybe it's a slow start or UDP?)
+    return json.dumps({
+        "type": "file_preview",
+        "path": f"Port {port} (Timeout)",
+        "mime": "url",
+        "content": url
+    })
 
 # Export list of tools
 TOOLS = [

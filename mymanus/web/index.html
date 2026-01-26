@@ -233,15 +233,15 @@
                         </div>
                     </button>
 
-                    <!-- Type 3: Streamlit App -->
-                    <button onclick="setTask('编写一个 Python Streamlit 应用，生成一些随机数据并绘制交互式图表。在沙箱中运行该应用（端口 8501），并提供公开访问的 URL 预览。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700">
+                    <!-- Type 3: Gradio App -->
+                    <button onclick="setTask('请在沙箱中安装 gradio==3.50.2，创建一个简单的 Hello World 应用（包含一个输入框和提交按钮）。启动时必须设置 server_name=&quot;0.0.0.0&quot;、share=False、enable_queue=False 等关键参数以避免反向代理下的JSON解析错误。使用 run_code 执行时，share=False 会自动非阻塞运行。运行后请调用 get_public_url(port=7860) 提供访问链接。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-orange-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700">
                          <div class="flex items-center gap-3">
-                            <span class="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                            <span class="p-1.5 rounded-md bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             </span>
                             <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">Streamlit 应用</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Python Web + Public URL</div>
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-orange-400">Gradio 应用</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Python Gradio + Public URL</div>
                             </div>
                         </div>
                     </button>
@@ -255,6 +255,19 @@
                             <div class="flex-1">
                                 <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400">智能文件分析</div>
                                 <div class="text-[10px] text-slate-500 dark:text-slate-400">自动生成专业 HTML 报告</div>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Type 5: Sandbox Tools SDK Showcase -->
+                    <button onclick="setTask('请展示沙箱工具SDK的综合使用：1) 使用 write_file 创建一个 Python 脚本文件（包含数据处理逻辑）；2) 使用 run_code 执行该脚本生成数据；3) 使用 list_files 查看生成的文件；4) 使用 read_file 读取结果文件；5) 使用 visualize_file 可视化生成的数据文件；6) 最后使用 download_file_to_host 将结果文件下载到本地。请在每个步骤中明确说明使用了哪个工具。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-green-600 dark:group-hover:text-green-400">沙箱工具 SDK 综合演示</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">文件操作 + 代码执行 + 可视化 + 下载</div>
                             </div>
                         </div>
                     </button>
