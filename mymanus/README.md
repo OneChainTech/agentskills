@@ -9,12 +9,10 @@ MyManus 是一个全能型自主编程智能体，深度集成了 **LangGraph** 
 *   **🧠 深度推理 (LangGraph Brain):**
     *   采用 ReAct 循环架构，支持自我反思（Self-Correction）和多步规划。
     *   内置长期记忆（MemorySaver），确保在复杂任务中保持上下文连贯。
-*   **🛡️ 双模沙箱 (E2B Firecracker MicroVM):**
+*   **🛡️ 安全沙箱 (E2B Code Interpreter):**
     *   **Code Interpreter:** 安全执行 Python 3.12+ 代码、Shell 命令，支持 `pip` 安装任意库。
-    *   **Desktop Sandbox:** 内置全功能 Linux 桌面 (X11)，支持启动浏览器 (Firefox/Chrome)、屏幕截图、鼠标键盘自动化控制。
 *   **🎨 交互式前端 (Real-time UI):**
     *   **实时可视化:** 自动渲染 Agent 生成的 HTML 文件、图表和数据报告。
-    *   **桌面流:** 通过 WebRTC/VNC 实时查看和控制沙箱内的桌面环境。
     *   **SSE 流式响应:** 毫秒级延迟，实时展示 Agent 的思考过程和工具调用。
 *   **⚡️ 现代工程化:**
     *   基于 Python 3.12+ 和 `uv` 极速包管理。
@@ -32,20 +30,18 @@ MyManus 是一个全能型自主编程智能体，深度集成了 **LangGraph** 
     *   管理 LangGraph 状态机，分发工具调用，处理 SSE 消息流。
 3.  **执行层 (Infrastructure):** 
     *   **E2B Cloud Sandboxes:** 提供隔离的云端微虚拟机。
-    *   分离的代码执行环境与图形化桌面环境。
 
 ## 📂 项目结构
 
 ```text
 mymanus/
 ├── agent.py                 # 🧠 智能体核心 (LangGraph 状态机定义)
-├── sandbox_e2b.py           # 🛠️ 工具层 (代码执行, 文件操作, 桌面控制)
+├── sandbox_e2b.py           # 🛠️ 工具层 (代码执行, 文件操作)
 ├── server.py                # 🌐 后端服务 (FastAPI, SSE, HTTP接口)
 ├── main.py                  # 💻 CLI 命令行入口
 ├── project_framework.canvas # 📐 技术架构可视化图 (Obsidian Canvas)
 ├── web/                     # 🎨 前端静态资源
 │   ├── index.html           # 主控制台
-│   └── desktop.html         # 桌面流调试视图
 ├── uploads/                 # 📂 用户上传文件暂存区
 └── downloads/               # 📂 智能体生成产物下载区
 ```
@@ -90,7 +86,6 @@ uv run main.py
 
 *   **📊 深度数据洞察:** "分析上传的 CSV 文件，清洗数据并用 Plotly 绘制交互式旭日图。"
 *   **🌐 3D 交互网页:** "用 Three.js 写一个赛博朋克风格的 3D 旋转立方体页面。"
-*   **🖥️ 浏览器自动化:** "打开 Firefox 访问 Hacker News，滚动浏览并截图保存。"
 *   **🤖 全栈应用开发:** "写一个贪吃蛇游戏，生成 HTML 并直接预览。"
 
 ## 🛡️ 安全说明

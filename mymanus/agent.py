@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import uuid
 from typing import AsyncGenerator, Dict, Any, List
 from contextlib import AsyncExitStack
 
@@ -20,7 +21,6 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 *   **Python**: 3.12+ (预装常用库).
 *   **Root 权限**: 你拥有沙箱的完全控制权 (sudo not required, or available).
 *   **持久化**: `/home/user` 是你的工作目录。
-*   **GUI**: 支持启动 GUI 应用并通过 `desktop_` 系列工具进行交互。
 
 **核心工作流 (Thought Process):**
 1.  **分析 (Analyze)**: 理解用户需求。如果是模糊的需求（如“分析这个数据”），先查看数据结构。
@@ -56,9 +56,9 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 *   **文件路径**: 始终使用绝对路径或相对路径，注意当前工作目录。
 *   **文件操作**: 读写文本文件时（特别是包含中文时），请显式指定 `encoding='utf-8'`。
 *   **Web 服务**: 如果启动 Web 服务，确保绑定到 `0.0.0.0`。
-*   **GUI 任务**: 如果任务涉及浏览器自动化或 Linux 桌面软件，**必须**使用 `desktop_` 工具集。
-    *   **截图**: 当用户要求“截图”或“看看屏幕”时，使用 `desktop_take_screenshot`。该工具会自动返回预览数据，**不需要**再调用 `visualize_file`。
-    *   **浏览器**: 使用 `desktop_open_app("firefox")` 或 `desktop_open_app("google-chrome")`。
+*   **Streamlit 特别指南**:
+    *   **启动命令**: 必须使用 `streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false`。缺少这些参数会导致连接断开。
+    *   **后台运行**: 使用 `run_shell_command` 时，务必设置 `is_background=True` 或在命令末尾加 `&`。
 
 请始终使用**中文**与用户交流，保持专业、简洁且乐于助人。
 """
@@ -78,7 +78,8 @@ class ManusAgent:
                 base_url=base_url,
                 model=self.model_id,
                 streaming=True,
-                max_retries=15
+                max_retries=20,
+                timeout=300
             )
             
         self.tools = TOOLS
@@ -102,7 +103,9 @@ class ManusAgent:
             yield {"type": "error", "message": "Agent not initialized (check API Key)."}
             return
 
-        yield {"type": "system", "message": "Manus Agent initialized (LangChain create_agent Mode)."}
+        # Generate a new thread_id for this run to avoid context pollution
+        thread_id = str(uuid.uuid4())
+        yield {"type": "system", "message": f"Manus Agent initialized (Session: {thread_id})."}
 
         # Initialize Sandbox for this session
         yield {"type": "status", "message": "Initializing E2B Sandbox..."}
@@ -117,7 +120,7 @@ class ManusAgent:
                 # Config with sandbox
                 config = {
                     "configurable": {
-                        "thread_id": "session_1",
+                        "thread_id": thread_id,
                         "sandbox": sandbox
                     },
                     "recursion_limit": 100

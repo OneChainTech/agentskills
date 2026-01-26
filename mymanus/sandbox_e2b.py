@@ -7,16 +7,10 @@ from typing import Optional, List, Dict, Any
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 from e2b_code_interpreter import AsyncSandbox
-from e2b_desktop import Sandbox as DesktopSandbox
-
-# Global Desktop Sandbox (Singleton for Server & Agent)
-GLOBAL_DESKTOP_SANDBOX = None
-DESKTOP_STREAM_STARTED = False
 
 # --- Configuration ---
 # Template IDs for E2B Sandboxes
 TEMPLATE_CODE_INTERPRETER = "code-interpreter-v1"
-TEMPLATE_DESKTOP = "nlhz8vlwyupq845jsdg9"  # Linux Desktop with X11/VNC
 
 # Ensure E2B_API_KEY is available
 if not os.getenv("E2B_API_KEY"):
@@ -30,27 +24,6 @@ def get_sandbox(config: RunnableConfig) -> AsyncSandbox:
     if not sandbox:
         raise RuntimeError("E2B Sandbox not found in configurable config.")
     return sandbox
-
-# --- Desktop Sandbox Helpers ---
-
-async def get_or_create_desktop_sandbox() -> DesktopSandbox:
-    """Get the running E2B desktop sandbox or create a new one."""
-    global GLOBAL_DESKTOP_SANDBOX
-    
-    if not os.getenv("E2B_API_KEY"):
-        raise RuntimeError("E2B_API_KEY not found")
-
-    if GLOBAL_DESKTOP_SANDBOX:
-        return GLOBAL_DESKTOP_SANDBOX
-
-    try:
-        # Create Desktop Sandbox using the defined template
-        # We run this in a thread because e2b_desktop might be sync or we want to be safe
-        GLOBAL_DESKTOP_SANDBOX = await asyncio.to_thread(DesktopSandbox.create, TEMPLATE_DESKTOP)
-    except Exception as e:
-        raise RuntimeError(f"Failed to create E2B Desktop Sandbox: {e}")
-        
-    return GLOBAL_DESKTOP_SANDBOX
 
 # --- Tools ---
 
@@ -344,144 +317,6 @@ async def get_public_url(port: int, config: RunnableConfig) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-# --- Desktop Tools (for Agent & Server) ---
-
-@tool
-async def desktop_get_stream_url() -> str:
-    """Get the desktop stream URL for viewing."""
-    global DESKTOP_STREAM_STARTED
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        if not DESKTOP_STREAM_STARTED:
-            await asyncio.to_thread(sb.stream.start)
-            DESKTOP_STREAM_STARTED = True
-        return await asyncio.to_thread(sb.stream.get_url)
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_take_screenshot(filename: str = "screenshot.png", config: RunnableConfig = None) -> str:
-    """
-    Take a screenshot of the desktop.
-    
-    Args:
-        filename: Optional filename to save the screenshot as (default: "screenshot.png").
-        
-    Returns:
-        A JSON string containing the base64 encoded screenshot for preview.
-    """
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        import base64
-        screenshot_bytes = await asyncio.to_thread(sb.screenshot)
-        
-        # Also write to sandbox file if possible, though 'sb' here is DesktopSandbox 
-        # and file operations are usually on the Code Interpreter sandbox.
-        # However, E2B Desktop Sandbox inherits from Sandbox so it has .files too.
-        # But wait, 'get_sandbox(config)' gives the code interpreter one. 
-        # 'sb' here is the desktop one. They are likely DIFFERENT VMs in this architecture 
-        # (one created via AsyncSandbox.create, one via DesktopSandbox.create).
-        # So writing to 'sb' (desktop) files is correct for the desktop VM, 
-        # but the agent usually works in the code interpreter VM.
-        # This is a dual-VM setup implication.
-        
-        # For simplicity in this tool, we just return the base64 for preview.
-        # If we really want to save it, we should probably return it and let the agent write it,
-        # OR we try to write it to the code interpreter sandbox if we can access it.
-        
-        # Try to write to the Code Interpreter sandbox for persistence
-        try:
-            if config:
-                code_sb = get_sandbox(config)
-                await code_sb.files.write(filename, screenshot_bytes)
-        except:
-            pass
-
-        b64_content = base64.b64encode(screenshot_bytes).decode('utf-8')
-        
-        # Return structured JSON for immediate frontend preview
-        return json.dumps({
-            "type": "file_preview",
-            "path": filename,
-            "mime": "image/png",
-            "content": b64_content
-        })
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_left_click(x: int, y: int) -> str:
-    """Move mouse to (x, y) and left click."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.move_mouse, x, y)
-        await asyncio.to_thread(sb.left_click)
-        return f"Clicked at ({x}, {y})"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_double_click(x: int, y: int) -> str:
-    """Move mouse to (x, y) and double click."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.move_mouse, x, y)
-        await asyncio.to_thread(sb.double_click)
-        return f"Double clicked at ({x}, {y})"
-    except Exception as e:
-        return f"Error: {str(e)}"
-        
-@tool
-async def desktop_right_click(x: int, y: int) -> str:
-    """Move mouse to (x, y) and right click."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.move_mouse, x, y)
-        await asyncio.to_thread(sb.right_click)
-        return f"Right clicked at ({x}, {y})"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_type(text: str) -> str:
-    """Type text."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.write, text)
-        return f"Typed: {text}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_press(key: str) -> str:
-    """Press a key (e.g. 'Enter', 'Space', 'Backspace')."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.press, key)
-        return f"Pressed: {key}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_scroll(amount: int) -> str:
-    """Scroll mouse wheel (positive for up, negative for down)."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.scroll, amount)
-        return f"Scrolled {amount}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-@tool
-async def desktop_open_app(app_name: str) -> str:
-    """Launch an application."""
-    try:
-        sb = await get_or_create_desktop_sandbox()
-        await asyncio.to_thread(sb.launch, app_name)
-        return f"Launched {app_name}"
-    except Exception as e:
-        return f"Error: {str(e)}"
-
 # Export list of tools
 TOOLS = [
     run_code,
@@ -494,14 +329,5 @@ TOOLS = [
     download_file_to_host,
     install_package,
     visualize_file,
-    get_public_url,
-    desktop_get_stream_url,
-    desktop_take_screenshot,
-    desktop_left_click,
-    desktop_double_click,
-    desktop_right_click,
-    desktop_type,
-    desktop_press,
-    desktop_scroll,
-    desktop_open_app
+    get_public_url
 ]
