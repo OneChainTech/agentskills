@@ -33,7 +33,8 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
     *   **合并操作**: 尽量在一个工具调用中完成相关联的步骤，减少往返延迟。
 4.  **验证 (Verify)**: 检查代码输出或文件是否存在。如果有错误，自我修正并重试。
 5.  **交付 (Deliver)**:
-    *   **Web/可视化**: 如果生成了 HTML, 图表, 或运行了 Web 服务 (Streamlit, Flask)，**必须**调用 `visualize_file` (静态文件) 或 `get_public_url` (动态服务) 以触发前端预览窗口。仅在终端打印 URL 是不够的，必须调用工具。
+    *   **静态网页/图表**: 如果生成了 HTML 文件、图片或图表，**必须**调用 `visualize_file(path='...')`。**严禁**对静态文件使用 `get_public_url`。
+    *   **动态 Web 服务**: 如果启动了 Web 服务 (如 Streamlit, Flask, Gradio, FastAPI) 监听端口，**必须**调用 `get_public_url(port=...)`。
     *   **文件下载**: 如果用户需要最终产物 (PDF, Excel, Zip)，使用 `download_file_to_host` 将其保存到宿主机供用户下载。
 
 **HTML 与可视化指南:**
@@ -62,8 +63,8 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 *   **Streamlit 特别指南**:
     *   **启动命令**: 必须使用 `streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false`。缺少这些参数会导致连接断开。
     *   **后台运行**: 使用 `run_shell_command` 时，务必设置 `is_background=True` 或在命令末尾加 `&`。
-    *   **Gradio 特别指南**:
-        *   **版本建议**: 强烈推荐使用 `pip install gradio==3.50.2`，因为新版本(4.x)在反向代理下常出现样式丢失(404)或连接错误。
+*   **Gradio 特别指南**:
+    *   **版本建议**: 强烈推荐使用 `pip install gradio==3.50.2`，因为新版本(4.x)在反向代理下常出现样式丢失(404)或连接错误。
         *   **启动代码**: 必须使用以下配置以避免反向代理下的JSON解析错误：
             ```python
             import gradio as gr
@@ -308,20 +309,24 @@ class ManusAgent:
                             snippet = str(content)[:400] + "..." if len(str(content)) > 400 else str(content)
                             
                             tools_html += f"""
-                            <div class="relative group rounded-lg border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 overflow-hidden transition-all duration-300 hover:border-amber-500/30">
-                                <div class="flex items-center justify-between px-3 py-2 border-b border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-black/20">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                                        <span class="text-[10px] font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400 font-mono">{tc['name']}</span>
+                            <div class="relative group/card rounded-xl border border-slate-200 bg-white/80 overflow-hidden transition-all duration-300 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/20 cursor-pointer backdrop-blur-sm">
+                                
+                                <div class="flex items-start justify-between px-4 py-3 border-b border-slate-200 bg-slate-50/80 relative z-10">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></div>
+                                        <span class="text-[11px] font-bold tracking-widest uppercase text-amber-600 font-mono">{tc['name']}</span>
                                     </div>
-                                    <div class="flex gap-1">
-                                        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/10"></div>
-                                        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/10"></div>
+                                    <div class="flex gap-1.5">
+                                        <div class="w-2.5 h-2.5 rounded-full bg-slate-300 group-hover/card:bg-amber-400/40 transition-colors"></div>
+                                        <div class="w-2.5 h-2.5 rounded-full bg-slate-300 group-hover/card:bg-amber-400/40 transition-colors"></div>
+                                        <div class="w-2.5 h-2.5 rounded-full bg-slate-300 group-hover/card:bg-amber-400/40 transition-colors"></div>
                                     </div>
                                 </div>
-                                <div class="p-3">
-                                    <pre class="text-[11px] font-mono text-slate-700 dark:text-amber-200/80 break-words whitespace-pre-wrap leading-relaxed selection:bg-amber-500/30">{snippet}</pre>
+                                <div class="p-4 relative z-10">
+                                    <pre class="text-[11px] font-mono text-slate-700 break-words whitespace-pre-wrap leading-relaxed selection:bg-amber-500/30">{snippet}</pre>
                                 </div>
+                                <!-- Bottom Accent Line -->
+                                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"></div>
                             </div>
                             """
 
@@ -329,7 +334,7 @@ class ManusAgent:
                         # IMPORTANT: Must include Tailwind and Fonts because iframe is isolated
                         preview_html = f"""
                         <!DOCTYPE html>
-                        <html lang="en" class="dark">
+                        <html lang="en">
                         <head>
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -349,81 +354,102 @@ class ManusAgent:
                             </script>
                             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
                             <style>
-                                /* Custom Scrollbar */
+                                /* Custom Scrollbar - Light Mode */
                                 ::-webkit-scrollbar {{
-                                    width: 4px;
+                                    width: 6px;
                                 }}
                                 ::-webkit-scrollbar-track {{
-                                    background: transparent;
-                                }}
-                                ::-webkit-scrollbar-thumb {{
-                                    background: rgba(156, 163, 175, 0.2);
+                                    background: rgba(226, 232, 240, 0.3);
                                     border-radius: 10px;
                                 }}
-                                /* Animations */
-                                @keyframes bounce-x {{
-                                    0%, 100% {{ transform: translateX(0); }}
-                                    50% {{ transform: translateX(3px); }}
+                                ::-webkit-scrollbar-thumb {{
+                                    background: rgba(245, 158, 11, 0.4);
+                                    border-radius: 10px;
+                                    transition: background 0.2s;
                                 }}
-                                .animate-bounce-x {{
-                                    animation: bounce-x 1s infinite;
+                                ::-webkit-scrollbar-thumb:hover {{
+                                    background: rgba(245, 158, 11, 0.6);
+                                }}
+
+                                /* Glassmorphism - Light Mode */
+                                .glass-card {{
+                                    background: rgba(255, 255, 255, 0.85);
+                                    backdrop-filter: blur(20px);
+                                    -webkit-backdrop-filter: blur(20px);
+                                }}
+
+                                /* Reduced Motion Support */
+                                @media (prefers-reduced-motion: reduce) {{
+                                    *, *::before, *::after {{
+                                        transition-duration: 0.01ms !important;
+                                    }}
                                 }}
                             </style>
                         </head>
-                        <body class="bg-transparent h-screen w-screen overflow-hidden flex items-center justify-center p-4 md:p-8 font-sans text-slate-200">
-                            
+                        <body class="bg-slate-50 h-screen w-screen overflow-hidden flex items-center justify-center p-4 md:p-8 font-sans text-slate-900">
+
                             <!-- Main Container -->
-                            <div class="w-full max-w-5xl h-full max-h-[600px] relative group mx-auto flex flex-col shadow-2xl">
-                                <!-- Background Glow -->
-                                <div class="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 pointer-events-none"></div>
+                            <div class="w-full max-w-6xl h-full max-h-[700px] relative group mx-auto flex flex-col shadow-2xl">
                                 
-                                <div class="relative w-full h-full bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-white/10 overflow-hidden grid grid-cols-1 md:grid-cols-12">
-                                    
+                                <div class="relative w-full h-full glass-card rounded-3xl border border-slate-200 overflow-hidden grid grid-cols-1 md:grid-cols-12 shadow-2xl shadow-slate-200/50">
+
                                     <!-- Left Panel: Context & Header -->
-                                    <div class="md:col-span-4 bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/5 relative overflow-hidden shrink-0">
-                                        <!-- Decorative Elements -->
-                                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
-                                        <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl"></div>
+                                    <div class="md:col-span-4 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-10 flex flex-col justify-center border-b md:border-b-0 md:border-r border-slate-200 relative overflow-hidden shrink-0">
                                         
                                         <div class="relative z-10 flex flex-col h-full justify-center">
-                                            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
-                                                <div class="absolute inset-0 bg-amber-500/20 blur rounded-xl animate-pulse"></div>
-                                                <svg class="w-7 h-7 text-amber-400 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            <!-- Icon Container -->
+                                            <div class="relative w-16 h-16 rounded-2xl bg-amber-500/10 border-2 border-amber-500/20 flex items-center justify-center mb-8 shrink-0">
+                                                <svg class="w-8 h-8 text-amber-600 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                                                 </svg>
                                             </div>
-                                            
-                                            <h3 class="text-2xl font-bold text-white tracking-tight mb-3">Security Check</h3>
-                                            <p class="text-sm text-slate-400 leading-relaxed mb-auto">
+
+                                            <h3 class="text-3xl font-bold text-slate-900 tracking-tight mb-4">Security Check</h3>
+                                            <p class="text-sm text-slate-600 leading-relaxed mb-auto">
                                                 The agent requires your approval to execute the following actions in the secure sandbox environment.
                                             </p>
-                                            
-                                            <div class="flex items-center gap-3 text-[11px] font-mono text-slate-500 uppercase tracking-wider mt-6 pt-6 border-t border-white/5">
-                                                <span class="w-2 h-2 rounded-full bg-green-500/50 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+
+                                            <!-- Status Badge -->
+                                            <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 border border-slate-200 text-[11px] font-mono text-slate-600 uppercase tracking-wider mt-8 shadow-sm">
+                                                <span class="relative flex h-2.5 w-2.5">
+                                                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                                </span>
                                                 System Standing By
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <!-- Right Panel: List & Actions -->
-                                    <div class="md:col-span-8 bg-slate-900/50 flex flex-col h-full overflow-hidden">
-                                        <!-- Header (Mobile Only) -->
-                                        <div class="md:hidden px-6 py-3 border-b border-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            Pending Operations
+                                    <div class="md:col-span-8 bg-white/60 flex flex-col h-full overflow-hidden backdrop-blur-sm">
+                                        <!-- Header -->
+                                        <div class="px-6 py-4 border-b border-slate-200 bg-white/80">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <h4 class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Pending Operations</h4>
+                                                    <p class="text-[10px] text-slate-500">Review and approve the following actions</p>
+                                                </div>
+                                                <div class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 shadow-sm">
+                                                    <span class="text-[10px] font-bold text-amber-700 font-mono">{len(tool_calls)} ACTIONS</span>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <!-- Scrollable Tool List -->
-                                        <div class="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-3 bg-black/20 min-h-0">
+                                        <div class="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-4 bg-gradient-to-b from-slate-50/50 to-blue-50/30 min-h-0">
                                             {tools_html}
                                         </div>
-                                        
+
                                         <!-- Footer -->
-                                        <div class="p-6 bg-slate-900/90 border-t border-white/5 flex gap-4 shrink-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-                                            <button onclick="confirmExecution('{thread_id}')" class="flex-1 relative group/btn px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white overflow-hidden transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40">
-                                                <div class="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 bg-[length:200%_auto] transition-all duration-500 group-hover/btn:bg-right"></div>
+                                        <div class="p-6 bg-white/90 border-t border-slate-200 flex gap-4 shrink-0 z-20 backdrop-blur-md shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                                            <button onclick="confirmExecution('{thread_id}')" class="flex-1 relative group/btn px-6 py-4 rounded-xl text-sm font-bold uppercase tracking-widest text-white overflow-hidden transition-all active:scale-[0.97] shadow-xl shadow-amber-600/30 hover:shadow-amber-600/50 border-2 border-amber-500/40 hover:border-amber-500/60">
+                                                <div class="absolute inset-0 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-[length:200%_auto] transition-all duration-700 group-hover/btn:bg-right"></div>
+                                                <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
                                                 <div class="relative flex items-center justify-center gap-3">
+                                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                                    </svg>
                                                     <span>Approve & Execute</span>
-                                                    <svg class="w-4 h-4 animate-bounce-x" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                     </svg>
                                                 </div>
