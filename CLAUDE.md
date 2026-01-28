@@ -90,23 +90,97 @@ uv run server.py
 
 ## Agent Skills System
 
-Skills are markdown-based instructions located in `.claude/skills/` (for Claude) and `.gemini/skills/` (for Gemini).
+Skills are markdown-based instructions located in `.claude/skills/` (for Claude) and `.gemini/skills/` (for Gemini). Each skill is a self-contained package that extends AI agent capabilities with specialized knowledge, workflows, and tools.
 
-**Available Skills**:
-- `frontend-design`: High-quality UI/UX generation guidelines
-- `mcp-builder`: Guide for building Model Context Protocol servers
-- `playwright-skill`: Browser automation with Playwright
-- `skill-creator`: Meta-skill for creating new skills
-- `ui-ux-pro-max`: Comprehensive UI/UX design resource with 50 styles, 21 palettes, 50 font pairings
-- `planning-with-files`: Manus-style persistent markdown planning
-- `remotion-best-practices`: Video creation in React with Remotion
-- `json-canvas`: JSON Canvas file manipulation
-- `obsidian-markdown`: Obsidian Flavored Markdown support
+### Skills Catalog (9 Total)
 
-**Skill Structure**:
-- `SKILL.md`: Core prompt/instruction
-- `scripts/`: Associated Python/Node.js scripts
-- `reference/`: Documentation and examples
+#### 1. UI/UX Design & Frontend (2 skills)
+
+**`frontend-design`** - Creative, Distinctive UI/UX Design
+- **Purpose**: Create production-grade frontend interfaces that avoid generic "AI slop" aesthetics
+- **Approach**: Bold, creative design with emphasis on distinctive visual choices
+- **Key Features**: Typography selection, color theory, motion design, spatial composition
+- **Use When**: Building web components, pages, dashboards, or any creative UI work
+- **Philosophy**: Intentional design with clear aesthetic direction (minimalist or maximalist)
+
+**`ui-ux-pro-max`** - Systematic UI/UX Design Intelligence
+- **Purpose**: Database-driven design system with searchable patterns and best practices
+- **Resources**: 50 styles, 21 color palettes, 50 font pairings, 20 chart types, 8 tech stacks
+- **Approach**: Structured workflow using Python search scripts for design decisions
+- **Use When**: Professional UI work requiring systematic design choices, accessibility, and best practices
+- **Tech Stacks**: React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind (default)
+
+**Note**: These two skills are complementary, not duplicates. Use `frontend-design` for creative/artistic work and `ui-ux-pro-max` for systematic/professional UI development.
+
+#### 2. Development Tools (2 skills)
+
+**`mcp-builder`** - Model Context Protocol Server Development
+- **Purpose**: Guide for creating high-quality MCP servers that enable LLMs to interact with external services
+- **Languages**: TypeScript (recommended) and Python (FastMCP)
+- **Process**: 4-phase workflow (Research → Implementation → Review → Evaluation)
+- **Use When**: Building MCP servers to integrate external APIs or services
+- **Key Features**: Tool design, authentication, error handling, pagination, evaluation creation
+
+**`playwright-skill`** - Browser Automation & Testing
+- **Purpose**: Complete browser automation with Playwright for testing and validation
+- **Features**: Auto-detects dev servers, writes clean test scripts to /tmp
+- **Use Cases**: Test pages, fill forms, screenshots, responsive design, login flows, link checking
+- **Use When**: Testing websites, automating browser interactions, validating web functionality
+- **Default**: Visible browser mode (headless: false) for debugging
+
+#### 3. Workflow & Planning (2 skills)
+
+**`planning-with-files`** - Manus-Style Planning System
+- **Purpose**: Transform workflow to use persistent markdown files as "working memory on disk"
+- **Pattern**: 3-file system (task_plan.md, notes.md, deliverable.md)
+- **Use When**: Complex tasks, multi-step projects, research tasks, or when tracking progress
+- **Key Rules**: Create plan first, read before decide, update after act, store don't stuff
+- **Philosophy**: Attention manipulation through file-based state management
+
+**`skill-creator`** - Meta-Skill for Creating Skills
+- **Purpose**: Guide for creating effective skills that extend AI agent capabilities
+- **Process**: 6-step workflow (Understand → Plan → Initialize → Edit → Package → Iterate)
+- **Use When**: Creating new skills or updating existing skills
+- **Key Principles**: Concise is key, progressive disclosure, appropriate degrees of freedom
+- **Tools**: init_skill.py (initialization), package_skill.py (validation & packaging)
+
+#### 4. Content Creation & Formats (3 skills)
+
+**`json-canvas`** - JSON Canvas File Manipulation
+- **Purpose**: Create and edit JSON Canvas files (.canvas) for infinite canvas applications
+- **Format**: Nodes (text, file, link, group) and edges (connections)
+- **Use When**: Working with .canvas files, creating visual canvases, mind maps, flowcharts
+- **Applications**: Obsidian Canvas and other JSON Canvas-compatible tools
+- **Features**: Z-index ordering, colors, labels, backgrounds, positioning
+
+**`obsidian-markdown`** - Obsidian Flavored Markdown
+- **Purpose**: Create and edit Obsidian-specific markdown syntax
+- **Features**: Wikilinks, embeds, callouts, properties (frontmatter), tags, comments
+- **Use When**: Working with .md files in Obsidian or when using Obsidian-specific syntax
+- **Syntax**: CommonMark + GitHub Flavored Markdown + LaTeX + Obsidian extensions
+- **Special Features**: Block references, search links, Mermaid diagrams, footnotes
+
+**`remotion-best-practices`** - Video Creation in React
+- **Purpose**: Best practices for Remotion - programmatic video creation using React
+- **Topics**: 30+ rule files covering animations, assets, audio, compositions, captions, etc.
+- **Use When**: Working with Remotion code for video generation
+- **Key Areas**: Timing/interpolation, sequencing, transitions, text animations, 3D content
+- **Tools**: Mediabunny integration, Tailwind support, Lottie animations, caption transcription
+
+### Skill Structure
+
+Each skill follows a consistent structure:
+- **`SKILL.md`**: Core instructions with YAML frontmatter (name, description)
+- **`scripts/`**: Executable code (Python/Node.js) for deterministic operations
+- **`reference/`**: Documentation loaded as needed to keep SKILL.md lean
+- **`assets/`**: Files used in output (templates, icons, fonts, etc.)
+
+### Skills Usage Guidelines
+
+- Skills are loaded dynamically when user requests match the skill's domain
+- Each skill provides specialized knowledge and workflows not available in base models
+- Skills use progressive disclosure: metadata → SKILL.md → bundled resources
+- No duplicate skills detected - all 9 skills serve distinct purposes
 
 ## Important Notes
 
