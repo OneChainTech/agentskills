@@ -9,6 +9,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.agents import create_agent
+from langchain.agents.middleware import HumanInTheLoopMiddleware
+from langgraph.types import Command
 
 # Import our tools
 from sandbox_e2b import TOOLS, TEMPLATE_CODE_INTERPRETER
@@ -130,13 +132,21 @@ class ManusAgent:
             
         self.tools = TOOLS
         
-        # Use create_agent from langchain v1
+        # Use create_agent from langchain with middleware
         if self.model:
             self.graph = create_agent(
                 model=self.model,
                 tools=self.tools,
                 system_prompt=SYSTEM_PROMPT,
-                checkpointer=MemorySaver()
+                checkpointer=MemorySaver(),
+                middleware=[
+                    HumanInTheLoopMiddleware(
+                        interrupt_on={
+                            "visualize_file": True
+                        },
+                        description_prefix="[Approval Required]"
+                    )
+                ]
             )
         else:
             self.graph = None
@@ -149,18 +159,18 @@ class ManusAgent:
             await self.sandbox.close()
             self.sandbox = None
 
-    async def run(self, task: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(self, task: str = None, thread_id: str = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Executes the agent loop using langchain.agents.create_agent.
+        Executes the agent loop.
+        If thread_id is provided, it resumes that thread.
         """
         if not self.graph:
             yield {"type": "error", "message": "Agent not initialized (check API Key)."}
             return
 
-        # Generate a new thread_id for this run to avoid context pollution
-        # Note: If we want multi-turn conversation memory, we should persist this ID.
-        # For now, we keep it per-task but reuse the sandbox.
-        thread_id = str(uuid.uuid4())
+        # Generate a new thread_id if not provided
+        if not thread_id:
+            thread_id = str(uuid.uuid4())
         
         # Initialize Sandbox if needed
         from e2b_code_interpreter import AsyncSandbox
@@ -190,10 +200,23 @@ class ManusAgent:
                 "recursion_limit": 100
             }
 
-            # Input format for langchain agent expects a list of messages
-            inputs = {"messages": [HumanMessage(content=task)]}
-
-            current_turn = 0
+            # Initialize turn count based on existing message history
+            state = self.graph.get_state(config)
+            existing_messages = state.values.get("messages", [])
+            # Each pair of Human+AI is one turn, plus the current one
+            current_turn = len([m for m in existing_messages if hasattr(m, 'content') and m.content]) // 2
+            
+            # Input format:
+            # If new task: {"messages": [HumanMessage(content=task)]}
+            # If resumption: Command(resume={"decisions": [{"type": "approve"}]})
+            inputs = None
+            if task:
+                inputs = {"messages": [HumanMessage(content=task)]}
+            else:
+                # Assuming resumption implies approval for now
+                # We need to wrap it in a dict because HumanInTheLoopMiddleware expects "decisions" key
+                # "approve" is the correct type, not "accept"
+                inputs = Command(resume={"decisions": [{"type": "approve"}]})
             
             # Use astream_events to pipe results to frontend
             async for event in self.graph.astream_events(inputs, config=config, version="v2"):
@@ -262,7 +285,172 @@ class ManusAgent:
                     if not is_preview:
                         yield {"type": "output", "content": content_str}
 
-            yield {"type": "success", "message": "Task completed."}
+            # Check if we are paused (interrupted)
+            state = self.graph.get_state(config)
+            if state.next:
+                # We are paused.
+                # Check what the next step is
+                # For HumanInTheLoopMiddleware, the interruption details might be in state
+                # But since we configured interrupt_on for tools, seeing pending tool calls is enough
+                
+                # Check for pending tool calls in the last message
+                if state.values.get("messages"):
+                    last_message = state.values["messages"][-1]
+                    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+                        tool_calls = last_message.tool_calls
+                        
+                        # Format tool calls for display with refined terminal-like style
+                        tools_html = ""
+                        for tc in tool_calls:
+                            # Extract snippet
+                            args = tc.get("args", {})
+                            content = args.get("code") or args.get("command") or json.dumps(args)
+                            snippet = str(content)[:400] + "..." if len(str(content)) > 400 else str(content)
+                            
+                            tools_html += f"""
+                            <div class="relative group rounded-lg border border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 overflow-hidden transition-all duration-300 hover:border-amber-500/30">
+                                <div class="flex items-center justify-between px-3 py-2 border-b border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-black/20">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                                        <span class="text-[10px] font-bold tracking-widest uppercase text-slate-500 dark:text-slate-400 font-mono">{tc['name']}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/10"></div>
+                                        <div class="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/10"></div>
+                                    </div>
+                                </div>
+                                <div class="p-3">
+                                    <pre class="text-[11px] font-mono text-slate-700 dark:text-amber-200/80 break-words whitespace-pre-wrap leading-relaxed selection:bg-amber-500/30">{snippet}</pre>
+                                </div>
+                            </div>
+                            """
+
+                        # Generate a preview for the UI with high-end frontend design
+                        # IMPORTANT: Must include Tailwind and Fonts because iframe is isolated
+                        preview_html = f"""
+                        <!DOCTYPE html>
+                        <html lang="en" class="dark">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <script src="https://cdn.tailwindcss.com"></script>
+                            <script>
+                                tailwind.config = {{
+                                    darkMode: 'class',
+                                    theme: {{
+                                        extend: {{
+                                            fontFamily: {{
+                                                sans: ['Inter', 'sans-serif'],
+                                                mono: ['JetBrains Mono', 'monospace'],
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            </script>
+                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+                            <style>
+                                /* Custom Scrollbar */
+                                ::-webkit-scrollbar {{
+                                    width: 4px;
+                                }}
+                                ::-webkit-scrollbar-track {{
+                                    background: transparent;
+                                }}
+                                ::-webkit-scrollbar-thumb {{
+                                    background: rgba(156, 163, 175, 0.2);
+                                    border-radius: 10px;
+                                }}
+                                /* Animations */
+                                @keyframes bounce-x {{
+                                    0%, 100% {{ transform: translateX(0); }}
+                                    50% {{ transform: translateX(3px); }}
+                                }}
+                                .animate-bounce-x {{
+                                    animation: bounce-x 1s infinite;
+                                }}
+                            </style>
+                        </head>
+                        <body class="bg-transparent h-screen w-screen overflow-hidden flex items-center justify-center p-4 md:p-8 font-sans text-slate-200">
+                            
+                            <!-- Main Container -->
+                            <div class="w-full max-w-5xl h-full max-h-[600px] relative group mx-auto flex flex-col shadow-2xl">
+                                <!-- Background Glow -->
+                                <div class="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 pointer-events-none"></div>
+                                
+                                <div class="relative w-full h-full bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-white/10 overflow-hidden grid grid-cols-1 md:grid-cols-12">
+                                    
+                                    <!-- Left Panel: Context & Header -->
+                                    <div class="md:col-span-4 bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/5 relative overflow-hidden shrink-0">
+                                        <!-- Decorative Elements -->
+                                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+                                        <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl"></div>
+                                        
+                                        <div class="relative z-10 flex flex-col h-full justify-center">
+                                            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
+                                                <div class="absolute inset-0 bg-amber-500/20 blur rounded-xl animate-pulse"></div>
+                                                <svg class="w-7 h-7 text-amber-400 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                            </div>
+                                            
+                                            <h3 class="text-2xl font-bold text-white tracking-tight mb-3">Security Check</h3>
+                                            <p class="text-sm text-slate-400 leading-relaxed mb-auto">
+                                                The agent requires your approval to execute the following actions in the secure sandbox environment.
+                                            </p>
+                                            
+                                            <div class="flex items-center gap-3 text-[11px] font-mono text-slate-500 uppercase tracking-wider mt-6 pt-6 border-t border-white/5">
+                                                <span class="w-2 h-2 rounded-full bg-green-500/50 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
+                                                System Standing By
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Right Panel: List & Actions -->
+                                    <div class="md:col-span-8 bg-slate-900/50 flex flex-col h-full overflow-hidden">
+                                        <!-- Header (Mobile Only) -->
+                                        <div class="md:hidden px-6 py-3 border-b border-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            Pending Operations
+                                        </div>
+
+                                        <!-- Scrollable Tool List -->
+                                        <div class="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-3 bg-black/20 min-h-0">
+                                            {tools_html}
+                                        </div>
+                                        
+                                        <!-- Footer -->
+                                        <div class="p-6 bg-slate-900/90 border-t border-white/5 flex gap-4 shrink-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+                                            <button onclick="confirmExecution('{thread_id}')" class="flex-1 relative group/btn px-4 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest text-white overflow-hidden transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40">
+                                                <div class="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 bg-[length:200%_auto] transition-all duration-500 group-hover/btn:bg-right"></div>
+                                                <div class="relative flex items-center justify-center gap-3">
+                                                    <span>Approve & Execute</span>
+                                                    <svg class="w-4 h-4 animate-bounce-x" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                    </svg>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                            
+                            <script>
+                                window.confirmExecution = (tid) => {{
+                                    window.parent.postMessage({{ type: 'manus_confirm', thread_id: tid, action: 'approve' }}, '*');
+                                }};
+                            </script>
+                        </body>
+                        </html>
+                        """
+                        
+                        yield {
+                            "type": "preview",
+                            "mime": "text/html",
+                            "content": preview_html,
+                            "path": "Security Check"
+                        }
+            else:
+                yield {"type": "success", "message": "Task completed."}
 
         except Exception as e:
             yield {"type": "error", "message": f"Agent Error: {str(e)}"}

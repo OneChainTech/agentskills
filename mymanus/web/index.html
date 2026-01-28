@@ -616,8 +616,10 @@
                     <div class="p-5 space-y-4 content-area"></div>
                 `;
                 workflowContainer.appendChild(el);
-                workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
             }
+            
+            // Auto-scroll workflow container to the bottom when a turn is active
+            workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
             return el.querySelector('.content-area');
         }
 
@@ -873,9 +875,8 @@
             }
         }
 
-        runBtn.addEventListener('click', async () => {
-            const task = taskInput.value.trim();
-            if (!task) {
+        async function runAgentTask(task, threadId = null) {
+            if (!task && !threadId) {
                 taskInput.focus();
                 taskInput.classList.add('ring-2', 'ring-red-500/50');
                 setTimeout(() => taskInput.classList.remove('ring-2', 'ring-red-500/50'), 500);
@@ -893,16 +894,25 @@
                 Processing...
             `;
 
-            logsContainer.innerHTML = ''; 
-            workflowContainer.innerHTML = '';
-            currentTurnDiv = null;
-            lastActionEl = null;
-            
-            // Show Workflow container, hide placeholder
-            previewPlaceholder.classList.add('hidden');
-            workflowContainer.classList.remove('hidden');
-
-            switchTab('preview'); 
+            if (!threadId) {
+                // New Task: Clear everything
+                logsContainer.innerHTML = ''; 
+                workflowContainer.innerHTML = '';
+                currentTurnDiv = null;
+                lastActionEl = null;
+                
+                // Show Workflow container, hide placeholder
+                previewPlaceholder.classList.add('hidden');
+                workflowContainer.classList.remove('hidden');
+                switchTab('preview'); 
+            } else {
+                // Resuming
+                // Ensure preview placeholder is hidden and container is shown
+                previewPlaceholder.classList.add('hidden');
+                workflowContainer.classList.remove('hidden');
+                switchTab('preview');
+                await appendLog('Resuming task execution...', 'system');
+            }
             
             try {
                 const response = await fetch('/api/run', {
@@ -910,13 +920,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         task: task,
-                        files: uploadedFiles 
+                        files: threadId ? [] : uploadedFiles, // Only send files on new task
+                        thread_id: threadId
                     })
                 });
 
-                // Reset Files after submit
-                uploadedFiles = [];
-                fileChips.innerHTML = '';
+                // Reset Files after submit (only for new tasks)
+                if (!threadId) {
+                    uploadedFiles = [];
+                    fileChips.innerHTML = '';
+                }
 
                 if (!response.ok) {
                     throw new Error(`Server returned ${response.status}: ${response.statusText}`);
@@ -957,6 +970,18 @@
                     const activeCard = currentTurnDiv.closest('.turn-card');
                     if (activeCard) activeCard.classList.remove('animate-pulse-border');
                 }
+            }
+        }
+
+        runBtn.addEventListener('click', async () => {
+            const task = taskInput.value.trim();
+            runAgentTask(task);
+        });
+
+        // Handle Confirmation Messages from Iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'manus_confirm') {
+                runAgentTask(null, event.data.thread_id);
             }
         });
     </script>

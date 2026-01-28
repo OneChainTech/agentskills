@@ -1,148 +1,182 @@
 {
 	"nodes": [
 		{
-			"id": "user-browser",
+			"id": "group-client",
+			"type": "group",
+			"label": "1. Client Layer (Frontend)",
+			"x": -800,
+			"y": -60,
+			"width": 400,
+			"height": 520,
+			"color": "4"
+		},
+		{
+			"id": "group-server",
+			"type": "group",
+			"label": "2. Server Layer (Python 3.12, FastAPI)",
+			"x": -360,
+			"y": -60,
+			"width": 500,
+			"height": 700,
+			"color": "2"
+		},
+		{
+			"id": "group-core",
+			"type": "group",
+			"label": "3. Agent Core (LangGraph + LangChain)",
+			"x": 180,
+			"y": -60,
+			"width": 500,
+			"height": 700,
+			"color": "1"
+		},
+		{
+			"id": "group-infra",
+			"type": "group",
+			"label": "4. Infrastructure (E2B Sandbox)",
+			"x": 720,
+			"y": -60,
+			"width": 400,
+			"height": 520,
+			"color": "6"
+		},
+		{
+			"id": "node-web",
 			"type": "text",
-			"text": "## 👤 User / Browser\n**Interactions:**\n- Chat Input\n- File Drag & Drop\n- View Live Artifacts\n- Control Desktop Stream",
-			"x": -600,
+			"text": "### 🌐 Web Console\n`web/index.html`\n\n**Tech:** HTML5, Tailwind CSS, JS (ES6)\n\n**Key Features:**\n- **SSE Receiver:** `handleEvent`\n- **HITL UI:** `confirmExecution` (Security Check Card)\n- **Visualization:** `iframe` for artifacts",
+			"x": -780,
 			"y": 0,
-			"width": 300,
+			"width": 360,
 			"height": 220,
 			"color": "4"
 		},
 		{
-			"id": "fastapi-server",
+			"id": "node-cli",
 			"type": "text",
-			"text": "## 🌐 FastAPI Server\n`server.py`\n\n**Endpoints:**\n- `POST /api/run` (Start Task)\n- `POST /api/upload` (File Ingestion)\n- `SSE /api/run` (Real-time Stream)\n- `Static` (Serve Web Assets)",
-			"x": -150,
+			"text": "### 💻 CLI Interface\n`main.py`\n\n**Tech:** Python 3.12, `rich`\n\n**Method:**\n- `async main()`: Event Loop\n- Direct `agent.run()` call",
+			"x": -780,
+			"y": 240,
+			"width": 360,
+			"height": 180,
+			"color": "4"
+		},
+		{
+			"id": "node-api",
+			"type": "text",
+			"text": "### 🚀 FastAPI Backend\n`server.py`\n**Version:** `0.128.0`\n\n**Endpoints:**\n- `POST /api/run`: Start/Resume Task\n  - Accepts `thread_id` for resumption\n- `POST /api/upload`: File Upload\n- `event_generator()`: SSE Streaming",
+			"x": -340,
 			"y": 0,
-			"width": 320,
-			"height": 260,
+			"width": 460,
+			"height": 240,
 			"color": "2"
 		},
 		{
-			"id": "manus-agent",
+			"id": "node-agent-class",
 			"type": "text",
-			"text": "## 🧠 Manus Agent\n`agent.py`\n\n**Logic:**\n- **LangGraph State Machine**\n- **Planner:** ReAct / Thought Loop\n- **Memory:** Short-term Context\n- **LLM:** DeepSeek-V3",
-			"x": 300,
-			"y": -150,
-			"width": 300,
-			"height": 220,
+			"text": "### 🧠 ManusAgent Class\n`agent.py`\n\n**Methods:**\n- `__init__`: Setup `create_agent` with `middleware`\n- `run(task, thread_id)`: Main Loop\n- `close()`: Cleanup",
+			"x": 200,
+			"y": 0,
+			"width": 460,
+			"height": 200,
 			"color": "1"
 		},
 		{
-			"id": "tools-layer",
+			"id": "node-langgraph",
 			"type": "text",
-			"text": "## 🛠️ Tool Interface\n`sandbox_e2b.py`\n\n**Capabilities:**\n- `run_code(python)`\n- `run_shell(bash)`\n- `visualize_file(path)`\n- `desktop_*(mouse/key)`",
-			"x": 300,
-			"y": 150,
-			"width": 300,
-			"height": 200,
+			"text": "### ⚙️ LangChain / LangGraph Engine\n**Stack:** `langchain`, `langgraph>=1.0.6`\n\n**Components:**\n- **Model:** `ChatOpenAI` (DeepSeek-V3)\n- **Memory:** `MemorySaver` (Persistence)\n- **Middleware:** `HumanInTheLoopMiddleware`\n  - Intercepts `run_code`, `run_shell_command`\n  - Pauses execution -> Requires `Command(resume=...)`",
+			"x": 200,
+			"y": 220,
+			"width": 460,
+			"height": 300,
+			"color": "1"
+		},
+		{
+			"id": "node-tools",
+			"type": "text",
+			"text": "### 🛠️ Tool Definitions\n`sandbox_e2b.py`\n\n**Decorators:** `@tool`\n\n**List:**\n- `run_code`, `run_shell_command`\n- `read_file`, `write_file`\n- `visualize_file`, `get_public_url`",
+			"x": 200,
+			"y": 540,
+			"width": 460,
+			"height": 160,
+			"color": "1"
+		},
+		{
+			"id": "node-e2b",
+			"type": "text",
+			"text": "### ☁️ E2B Sandbox\n**Lib:** `e2b-code-interpreter>=0.0.10`\n\n**Environment:**\n- Firecracker MicroVM\n- Linux (Debian)\n- Python 3.12 Runtime\n- Internet Access",
+			"x": 740,
+			"y": 0,
+			"width": 360,
+			"height": 240,
 			"color": "6"
 		},
 		{
-			"id": "e2b-code",
+			"id": "note-flow-hitl",
 			"type": "text",
-			"text": "## 📦 E2B Code Sandbox\n**Secure MicroVM**\n\n- **Python Runtime:** 3.12+\n- **Pip:** Install any package\n- **Filesystem:** Persist generated files",
-			"x": 750,
-			"y": -100,
-			"width": 320,
+			"text": "**HITL Flow:**\n1. Agent calls Tool -> Middleware Intercepts -> Pauses Graph.\n2. Server yields `Confirmation Request` (HTML).\n3. User clicks 'Approve' -> Frontend calls `/api/run` with `thread_id`.\n4. Server resumes Agent with `Command(resume={\"decisions\": ...})`.\n5. Tool Executes.",
+			"x": -340,
+			"y": 260,
+			"width": 460,
 			"height": 180,
 			"color": "3"
-		},
-		{
-			"id": "e2b-desktop",
-			"type": "text",
-			"text": "## 🖥️ E2B Desktop Sandbox\n**Linux X11 Environment**\n\n- **Browser:** Chrome / Firefox\n- **GUI Automation:** PyAutoGUI\n- **Stream:** WebRTC/VNC",
-			"x": 750,
-			"y": 150,
-			"width": 320,
-			"height": 180,
-			"color": "3"
-		},
-		{
-			"id": "artifacts",
-			"type": "text",
-			"text": "## 📄 Artifacts\n**Generated Content**\n\n- HTML Reports\n- Images / Charts\n- Downloadable Files",
-			"x": -150,
-			"y": 350,
-			"width": 320,
-			"height": 140,
-			"color": "5"
 		}
 	],
 	"edges": [
 		{
-			"id": "e1",
-			"fromNode": "user-browser",
+			"id": "edge-web-api",
+			"fromNode": "node-web",
 			"fromSide": "right",
-			"toNode": "fastapi-server",
+			"toNode": "node-api",
 			"toSide": "left",
-			"label": "HTTP / SSE Stream"
+			"label": "HTTP / SSE"
 		},
 		{
-			"id": "e2",
-			"fromNode": "fastapi-server",
+			"id": "edge-api-agent",
+			"fromNode": "node-api",
 			"fromSide": "right",
-			"toNode": "manus-agent",
+			"toNode": "node-agent-class",
 			"toSide": "left",
-			"label": "Invoke Agent"
+			"label": "Invokes run()"
 		},
 		{
-			"id": "e3",
-			"fromNode": "manus-agent",
+			"id": "edge-agent-graph",
+			"fromNode": "node-agent-class",
 			"fromSide": "bottom",
-			"toNode": "tools-layer",
+			"toNode": "node-langgraph",
 			"toSide": "top",
-			"label": "Call Tools"
+			"label": "Manages Graph"
 		},
 		{
-			"id": "e4",
-			"fromNode": "tools-layer",
-			"fromSide": "right",
-			"toNode": "e2b-code",
-			"toSide": "left",
-			"label": "Execute Code"
-		},
-		{
-			"id": "e5",
-			"fromNode": "tools-layer",
-			"fromSide": "right",
-			"toNode": "e2b-desktop",
-			"toSide": "left",
-			"label": "Control Desktop"
-		},
-		{
-			"id": "e6",
-			"fromNode": "e2b-code",
-			"fromSide": "left",
-			"toNode": "fastapi-server",
-			"toSide": "right",
-			"label": "Return Output / Files"
-		},
-		{
-			"id": "e7",
-			"fromNode": "e2b-desktop",
+			"id": "edge-graph-tools",
+			"fromNode": "node-langgraph",
 			"fromSide": "bottom",
-			"toNode": "user-browser",
+			"toNode": "node-tools",
+			"toSide": "top",
+			"label": "Calls Tools"
+		},
+		{
+			"id": "edge-tools-e2b",
+			"fromNode": "node-tools",
+			"fromSide": "right",
+			"toNode": "node-e2b",
+			"toSide": "left",
+			"label": "Executes via SDK"
+		},
+		{
+			"id": "edge-hitl-loop",
+			"fromNode": "node-langgraph",
+			"fromSide": "left",
+			"toNode": "note-flow-hitl",
+			"toSide": "right",
+			"label": "Interruption Event"
+		},
+		{
+			"id": "edge-resume",
+			"fromNode": "note-flow-hitl",
+			"fromSide": "top",
+			"toNode": "node-api",
 			"toSide": "bottom",
-			"label": "Stream Video (Direct/Proxy)"
-		},
-		{
-			"id": "e8",
-			"fromNode": "fastapi-server",
-			"fromSide": "bottom",
-			"toNode": "artifacts",
-			"toSide": "top",
-			"label": "Serve Static"
-		},
-		{
-			"id": "e9",
-			"fromNode": "artifacts",
-			"fromSide": "left",
-			"toNode": "user-browser",
-			"toSide": "right",
-			"label": "Render in Iframe"
+			"label": "Resume Request"
 		}
 	]
 }

@@ -50,8 +50,9 @@ DOWNLOAD_DIR = os.path.join(os.getcwd(), "downloads")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 class TaskRequest(BaseModel):
-    task: str
+    task: Optional[str] = None
     files: Optional[List[str]] = []
+    thread_id: Optional[str] = None
 
 @app.post("/api/upload")
 def upload_file(file: UploadFile = File(...)):
@@ -82,11 +83,15 @@ async def run_task(request: TaskRequest):
         file_context += "2. Once uploaded, you can access them in the sandbox using standard Python (e.g., `open('filename')`).\n"
         file_context += "DO NOT try to read the local absolute path directly. It will fail.\n"
         
-        prompt += file_context
+        if prompt:
+            prompt += file_context
+        else:
+            prompt = file_context
 
     async def event_generator():
         try:
-            async for event in agent.run(prompt):
+            # If prompt is None (e.g. resumption), agent.run handles it
+            async for event in agent.run(prompt, thread_id=request.thread_id):
                 yield json.dumps(event) + "\n"
                 # Small delay to ensure UI updates smoothly if events come too fast
                 await asyncio.sleep(0.05)
