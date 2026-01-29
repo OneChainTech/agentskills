@@ -2,11 +2,12 @@ import os
 import json
 import asyncio
 import uuid
-from typing import AsyncGenerator, Dict, Any, List
-from contextlib import AsyncExitStack
+import re
+from typing import AsyncGenerator, Dict, Any, List, Literal
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
@@ -112,6 +113,81 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 请始终使用**中文**与用户交流，保持专业、简洁且乐于助人。
 """
 
+# --- Multi-Agent Prompts ---
+
+CODE_WRITER_PROMPT = """你是一个专业的代码编写智能体。你的职责是：
+
+**核心能力：**
+1. 根据任务需求编写清晰、功能完整的代码
+2. 遵循最佳实践和编码规范
+3. 根据代码审查反馈改进代码
+4. 编写必要的配置文件和依赖声明
+
+**重要指令：**
+- **必须**使用 `write_file` 工具将所有代码写入文件。
+- **不要**仅仅在回复中展示代码块，除非你已经调用了 `write_file`。
+- 如果你不调用 `write_file`，文件将不会被保存，任务将失败。
+
+**编码标准：**
+- 使用清晰的变量和函数命名
+- 添加适当的注释和文档字符串
+- 遵循 PEP 8 (Python) 或相应语言的规范
+- 处理常见的错误情况
+- 使用 UTF-8 编码处理中文
+
+**工作流程：**
+1. 分析任务需求，规划需要创建的文件
+2. 使用 write_file 工具创建代码文件
+3. 如果收到审查反馈，仔细阅读并改进代码
+4. 确保所有文件都已创建并保存
+
+**可用工具：**
+- write_file: 创建或覆盖文件
+- read_file: 读取文件内容
+- list_files: 列出目录中的文件
+
+请始终使用中文回复，保持专业和高效。
+"""
+
+CODE_REVIEWER_PROMPT = """你是一个专业的代码审查智能体。你的职责是：
+
+**审查重点：**
+1. **代码质量**: 可读性、可维护性、代码组织
+2. **功能完整性**: 是否满足任务需求，是否有遗漏
+3. **最佳实践**: 是否遵循语言和框架的最佳实践
+4. **错误处理**: 是否处理了常见的错误情况
+5. **安全性**: 是否存在明显的安全隐患
+6. **文档**: 是否有必要的注释和文档字符串
+
+**审查标准：**
+- ✓ **通过 (approved)**: 代码质量良好，满足需求，可以使用
+- ✗ **需要改进 (needs_improvement)**: 存在明显问题，需要修改
+
+**反馈格式：**
+你必须返回 JSON 格式的审查结果：
+```json
+{
+  "status": "approved" 或 "needs_improvement",
+  "comments": ["评论1", "评论2"],
+  "suggestions": ["建议1", "建议2"]
+}
+```
+
+**审查流程：**
+1. **首先**使用 `list_files` 工具列出 /home/user 目录，确认实际存在哪些文件
+2. 使用 `read_file` 工具读取所有相关文件
+3. 仔细分析代码质量和功能完整性
+4. 列出具体的问题和改进建议
+5. 返回结构化的审查结果
+
+**注意事项：**
+- 提供具体、可操作的建议，而不是泛泛而谈
+- 如果代码基本满足需求，不要过于苛刻
+- 关注重要问题，忽略微小的风格差异
+
+请始终使用中文回复，保持专业和建设性。
+"""
+
 class ManusAgent:
     def __init__(self):
         api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -157,10 +233,36 @@ class ManusAgent:
     async def close(self):
         """Clean up resources."""
         if self.sandbox:
-            await self.sandbox.close()
+            await self.sandbox.kill()
             self.sandbox = None
 
-    async def run(self, task: str = None, thread_id: str = None) -> AsyncGenerator[Dict[str, Any], None]:
+    async def run(
+        self,
+        task: str = None,
+        thread_id: str = None,
+        mode: Literal["single", "multi"] = "single",
+        max_iterations: int = 3
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Executes the agent loop.
+
+        Args:
+            task: Task description
+            thread_id: Thread ID for resumption
+            mode: "single" for single agent, "multi" for multi-agent collaboration
+            max_iterations: Max iterations for multi-agent mode
+
+        Returns:
+            AsyncGenerator of events
+        """
+        if mode == "single":
+            async for event in self._run_single(task, thread_id):
+                yield event
+        else:
+            async for event in self._run_multi(task, max_iterations):
+                yield event
+
+    async def _run_single(self, task: str = None, thread_id: str = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Executes the agent loop.
         If thread_id is provided, it resumes that thread.
@@ -482,6 +584,379 @@ class ManusAgent:
             yield {"type": "error", "message": f"Agent Error: {str(e)}"}
             import traceback
             traceback.print_exc()
+
+    async def _run_multi(
+        self,
+        task: str,
+        max_iterations: int = 3
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Multi-agent collaboration mode (Code Writer + Code Reviewer)"""
+
+        if not self.model:
+            yield {"type": "error", "message": "Agent not initialized (check API Key)."}
+            return
+
+        # Initialize sandbox
+        from e2b_code_interpreter import AsyncSandbox
+
+        try:
+            is_healthy = False
+            if self.sandbox:
+                try:
+                    is_healthy = await self.sandbox.is_running()
+                except:
+                    is_healthy = False
+
+            if not is_healthy:
+                yield {"type": "status", "message": "初始化 E2B Sandbox..."}
+                self.sandbox = await AsyncSandbox.create(TEMPLATE_CODE_INTERPRETER)
+                yield {"type": "system", "message": f"Sandbox created: {self.sandbox.sandbox_id}"}
+            else:
+                yield {"type": "system", "message": f"Reusing sandbox: {self.sandbox.sandbox.sandbox_id}"}
+
+        except Exception as e:
+            yield {"type": "error", "message": f"Sandbox initialization failed: {str(e)}"}
+            return
+
+        # Create file tools for multi-agent mode
+        files_created = []
+
+        @tool
+        async def write_file(path: str, content: str) -> str:
+            """在沙箱中创建或覆盖文件。必须提供文件路径(path)和文件内容(content)。"""
+            try:
+                full_path = f"/home/user/{path}" if not path.startswith("/") else path
+                await asyncio.wait_for(
+                    self.sandbox.files.write(full_path, content),
+                    timeout=30.0
+                )
+                clean_path = path
+                if clean_path.startswith("./"):
+                    clean_path = clean_path[2:]
+                elif clean_path.startswith("/home/user/"):
+                    clean_path = clean_path.replace("/home/user/", "")
+                if clean_path not in files_created:
+                    files_created.append(clean_path)
+                return f"✓ 文件已创建: {clean_path}"
+            except asyncio.TimeoutError:
+                return f"✗ 写入文件超时 ({path}): 写入操作超过 30 秒"
+            except Exception as e:
+                return f"✗ 写入文件失败 ({path}): {type(e).__name__}: {str(e)}"
+
+        @tool
+        async def read_file(path: str) -> str:
+            """读取文件内容。参数: path (文件路径)"""
+            try:
+                full_path = f"/home/user/{path}" if not path.startswith("/") else path
+                try:
+                    content = await asyncio.wait_for(
+                        self.sandbox.files.read(full_path),
+                        timeout=10.0
+                    )
+                    return f"=== {path} ===\n{content}"
+                except asyncio.TimeoutError:
+                    return f"✗ 读取文件超时 ({path}): 文件读取超过 10 秒"
+            except FileNotFoundError:
+                return f"✗ 文件不存在 ({path}): 请使用 list_files 确认文件是否存在"
+            except Exception as e:
+                return f"✗ 读取文件失败 ({path}): {type(e).__name__}: {str(e)}"
+
+        @tool
+        async def list_files(directory: str = "/home/user") -> str:
+            """列出目录中的文件。参数: directory (目录路径，默认 /home/user)"""
+            try:
+                try:
+                    files = await asyncio.wait_for(
+                        self.sandbox.files.list(directory),
+                        timeout=10.0
+                    )
+                    if not files:
+                        return f"目录 {directory} 为空"
+                    return "\n".join([f"- {f.name} ({'dir' if f.type == 'dir' else 'file'})" for f in files])
+                except asyncio.TimeoutError:
+                    return f"✗ 列出文件超时 ({directory}): 操作超过 10 秒"
+            except Exception as e:
+                return f"✗ 列出文件失败 ({directory}): {type(e).__name__}: {str(e)}"
+
+        # Create Code Writer and Code Reviewer agents
+        code_writer = create_agent(
+            model=self.model,
+            tools=[write_file, read_file, list_files],
+            system_prompt=CODE_WRITER_PROMPT
+        )
+
+        code_reviewer = create_agent(
+            model=self.model,
+            tools=[read_file, list_files],
+            system_prompt=CODE_REVIEWER_PROMPT
+        )
+
+        yield {"type": "status", "message": "🎯 开始多智能体协作"}
+        yield {"type": "system", "message": f"任务: {task}"}
+
+        # Iteration loop
+        for iteration in range(1, max_iterations + 1):
+            yield {"type": "status", "message": f"Thinking (Turn {iteration})"}
+
+            # Phase 1: Code Writing
+            yield {"type": "status", "message": "Calling tool: CodeWriter"}
+            yield {"type": "status", "message": "📝 Code Writer 正在编写代码..."}
+
+            try:
+                feedback = None
+                if iteration > 1:
+                    # Get feedback from previous iteration
+                    pass
+
+                if feedback:
+                    input_text = f"""任务: {task}\n\n代码审查反馈:\n{feedback}\n\n请根据反馈改进代码。"""
+                else:
+                    input_text = f"""任务: {task}\n\n请编写完整的代码实现。"""
+
+                config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+                result = await code_writer.ainvoke({"messages": [("user", input_text)]}, config)
+
+                output = ""
+                if "messages" in result:
+                    for msg in reversed(result["messages"]):
+                        if msg.type == "ai":
+                            output = msg.content
+                            break
+
+                # Extract files from output
+                for line in output.split("\n"):
+                    if "文件已创建:" in line:
+                        path = line.split("文件已创建:")[-1].strip()
+                        if path.startswith("./"):
+                            path = path[2:]
+                        elif path.startswith("/home/user/"):
+                            path = path.replace("/home/user/", "")
+                        if path and path not in files_created:
+                            files_created.append(path)
+
+                yield {"type": "output", "content": "✓ Code Writer 完成"}
+                yield {"type": "output", "content": f"创建的文件: {', '.join(files_created) if files_created else '(无)'}"}
+
+            except Exception as e:
+                yield {"type": "error", "message": f"Code Writer 错误: {str(e)}"}
+                break
+
+            # Phase 2: Code Review
+            yield {"type": "status", "message": "Calling tool: CodeReviewer"}
+            yield {"type": "status", "message": "🔍 Code Reviewer 正在审查代码..."}
+
+            try:
+                # List actual files in sandbox
+                files_to_review = set(files_created)
+                try:
+                    files_list = await asyncio.wait_for(
+                        self.sandbox.files.list("/home/user"),
+                        timeout=15.0
+                    )
+                    for f in files_list:
+                        if f.type != 'dir' and not f.name.startswith('.'):
+                            files_to_review.add(f.name)
+                except Exception:
+                    pass
+
+                files_to_review = sorted(list(files_to_review))
+                yield {"type": "status", "message": f"📂 准备审查文件: {', '.join(files_to_review) if files_to_review else '无'}"}
+
+                review_input = f"""
+原始任务: {task}
+
+需要审查的文件列表:
+{chr(10).join([f'- {f}' for f in files_to_review]) if files_to_review else '(无文件)'}
+
+**重要指令**:
+1. **首先**使用 `list_files("/home/user")` 工具确认实际存在哪些文件。
+2. 你必须**逐个**使用 `read_file` 工具读取文件内容。
+3. 不要假设文件内容，必须基于 `read_file` 的返回结果进行审查。
+4. 如果文件读取失败或超时，请在评论中指出具体错误信息。
+5. 审查完成后，返回 JSON 格式的审查结果。
+
+请开始审查...
+"""
+                config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+                result = await code_reviewer.ainvoke({"messages": [("user", review_input)]}, config)
+
+                output = ""
+                if "messages" in result:
+                    for msg in reversed(result["messages"]):
+                        if msg.type == "ai":
+                            output = msg.content
+                            break
+
+                # Parse review result
+                review_result = self._parse_review_result(output)
+                feedback_status = review_result.get("status", "needs_improvement")
+                feedback_comments = review_result.get("comments", [])
+                feedback_suggestions = review_result.get("suggestions", [])
+
+                yield {"type": "output", "content": "✓ Code Reviewer 完成"}
+                yield {"type": "output", "content": f"审查状态: {feedback_status}"}
+                if feedback_comments:
+                    yield {"type": "output", "content": f"评论: {chr(10).join(feedback_comments)}"}
+                if feedback_suggestions:
+                    yield {"type": "output", "content": f"建议: {chr(10).join(feedback_suggestions)}"}
+
+                if feedback_status == "approved":
+                    yield {"type": "status", "message": "✅ 代码审查通过！"}
+                    yield {"type": "answer", "content": f"🎉 多智能体任务完成！共经过 {iteration} 轮迭代。"}
+
+                    # Try to run the application
+                    entry_point = self._find_entry_point(files_created)
+                    if entry_point:
+                        async for event in self._execute_application(entry_point, task):
+                            yield event
+                    break
+                else:
+                    if iteration < max_iterations:
+                        yield {"type": "status", "message": "⚠️ 需要改进，准备下一轮迭代..."}
+                    else:
+                        yield {"type": "status", "message": "⚠️ 达到最大迭代次数，停止迭代。"}
+                        yield {"type": "answer", "content": f"已完成 {max_iterations} 轮迭代。最终审查状态: {feedback_status}"}
+                        break
+
+            except Exception as e:
+                yield {"type": "error", "message": f"Code Reviewer 错误: {str(e)}"}
+                break
+
+    def _parse_review_result(self, output: str) -> Dict[str, Any]:
+        """Parse code review result from LLM output"""
+        try:
+            # Try to extract JSON block
+            json_block = re.search(r"```json\s*([\s\S]*?)\s*```", output)
+            if json_block:
+                return json.loads(json_block.group(1).strip())
+
+            # Try to find JSON object
+            possible_json = re.search(r"\{[\s\S]*\}", output)
+            if possible_json:
+                return json.loads(possible_json.group(0))
+        except Exception:
+            pass
+
+        # Fallback parsing
+        status = "needs_improvement"
+        if "approved" in output.lower() or "通过" in output:
+            status = "approved"
+
+        comments = []
+        suggestions = []
+        lines = output.split("\n")
+        section = "comments"
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if "建议" in line or "suggestion" in line.lower():
+                section = "suggestions"
+                continue
+            if "评论" in line or "comment" in line.lower():
+                section = "comments"
+                continue
+            if line.startswith("-") or line.startswith("•") or line[0].isdigit():
+                content = line.lstrip("-•0123456789. ").strip()
+                if section == "suggestions":
+                    suggestions.append(content)
+                else:
+                    comments.append(content)
+
+        return {
+            "status": status,
+            "comments": comments if comments else ["审查完成"],
+            "suggestions": suggestions
+        }
+
+    def _find_entry_point(self, files: List[str]) -> str | None:
+        """Find the main entry point file"""
+        priority_names = ["main.py", "app.py", "streamlit_app.py", "run.py", "server.py"]
+        for name in priority_names:
+            if name in files:
+                return name
+
+        py_files = [f for f in files if f.endswith(".py")]
+        if py_files:
+            candidates = [f for f in py_files if "test" not in f]
+            if not candidates:
+                candidates = py_files
+            if len(candidates) == 1:
+                return candidates[0]
+            return min(candidates, key=len)
+
+        return None
+
+    async def _execute_application(self, entry_point: str, task: str):
+        """Execute the created application"""
+        try:
+            # Install requirements.txt if exists
+            try:
+                req_content = await self.sandbox.files.read("/home/user/requirements.txt")
+                if req_content:
+                    yield {"type": "status", "message": "📦 检测到 requirements.txt，正在安装依赖..."}
+                    req_cmd = "pip install -r /home/user/requirements.txt"
+                    install_result = await self.sandbox.commands.run(req_cmd, timeout=300)
+                    if install_result.exit_code != 0:
+                        yield {"type": "error", "message": f"依赖安装失败: {install_result.stderr}"}
+                    else:
+                        yield {"type": "output", "content": "✓ 依赖安装完成"}
+            except:
+                pass
+
+            full_path = f"/home/user/{entry_point}" if not entry_point.startswith("/") else entry_point
+
+            # Detect app type
+            is_streamlit = "streamlit" in entry_point.lower() or "streamlit" in task.lower()
+            is_gradio = "gradio" in entry_point.lower() or "gradio" in task.lower() or entry_point == "app.py"
+
+            if is_streamlit:
+                yield {"type": "status", "message": "📦 正在安装 Streamlit..."}
+                await self.sandbox.commands.run("pip install streamlit -q")
+                cmd = f"streamlit run {full_path} --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false"
+                port = 8501
+                app_type = "Streamlit App"
+            elif is_gradio:
+                yield {"type": "status", "message": "📦 正在安装 Gradio..."}
+                await self.sandbox.commands.run("pip install gradio==3.50.2 -q")
+                # Gradio with share=False runs non-blocking
+                yield {"type": "status", "message": f"🚀 正在启动 Gradio 应用: {entry_point}"}
+                cmd = f"python3 {full_path}"
+                port = 7860
+                app_type = "Gradio App"
+            else:
+                cmd = f"python3 {full_path}"
+                port = 8000
+                app_type = "Web App"
+
+            is_web = is_streamlit or is_gradio or "app.py" in entry_point or "main.py" in entry_point
+
+            if is_web:
+                yield {"type": "status", "message": f"启动 {app_type} 服务中..."}
+                process = await self.sandbox.commands.run(cmd, background=True)
+
+                # Wait a bit for the service to start
+                await asyncio.sleep(5)
+
+                try:
+                    host = self.sandbox.get_host(port)
+                    url = f"https://{host}"
+                    yield {"type": "status", "message": f"🔗 正在暴露服务: {url}"}
+                    yield {"type": "file_preview", "path": f"{app_type} (Port {port})", "mime": "url", "content": url}
+                except Exception as e:
+                    yield {"type": "error", "message": f"无法获取公共链接: {str(e)}"}
+            else:
+                result = await self.sandbox.commands.run(cmd, timeout=60)
+                output = []
+                if result.stdout:
+                    output.append(f"STDOUT:\n{result.stdout}")
+                if result.stderr:
+                    output.append(f"STDERR:\n{result.stderr}")
+                yield {"type": "output", "content": "\n".join(output) if output else "(无输出)"}
+
+        except Exception as e:
+            yield {"type": "error", "message": f"运行失败: {str(e)}"}
 
 if __name__ == "__main__":
     agent = ManusAgent()

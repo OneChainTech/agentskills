@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 import shutil
 import os
 from agent import ManusAgent
@@ -53,6 +53,8 @@ class TaskRequest(BaseModel):
     task: Optional[str] = None
     files: Optional[List[str]] = []
     thread_id: Optional[str] = None
+    mode: Optional[Literal["single", "multi"]] = "single"
+    max_iterations: Optional[int] = 3
 
 @app.post("/api/upload")
 def upload_file(file: UploadFile = File(...)):
@@ -66,9 +68,14 @@ def upload_file(file: UploadFile = File(...)):
 
 @app.post("/api/run")
 async def run_task(request: TaskRequest):
+    """Run task in single-agent or multi-agent mode"""
     # Use global agent instance
     agent = agent_instance
-    
+
+    # Determine mode
+    mode = request.mode or "single"
+    max_iterations = request.max_iterations or 3
+
     # Inject file context if files exist
     prompt = request.task
     if request.files:
@@ -91,7 +98,12 @@ async def run_task(request: TaskRequest):
     async def event_generator():
         try:
             # If prompt is None (e.g. resumption), agent.run handles it
-            async for event in agent.run(prompt, thread_id=request.thread_id):
+            async for event in agent.run(
+                prompt,
+                thread_id=request.thread_id,
+                mode=mode,
+                max_iterations=max_iterations
+            ):
                 yield json.dumps(event) + "\n"
                 # Small delay to ensure UI updates smoothly if events come too fast
                 await asyncio.sleep(0.05)
@@ -99,6 +111,7 @@ async def run_task(request: TaskRequest):
             yield json.dumps({"type": "error", "message": f"Server Error: {str(e)}"}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
 
 # Serve static files (the web interface)
 app.mount("/", StaticFiles(directory="web", html=True), name="static")

@@ -271,6 +271,25 @@
                             </div>
                         </div>
                     </button>
+
+                    <!-- Section Divider -->
+                    <div class="my-2 border-t border-slate-200 dark:border-white/10"></div>
+                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                        Advanced Agents
+                    </label>
+
+                    <!-- Type 6: Multi-Agent Collaboration -->
+                    <button onclick="setTask(MULTI_AGENT_PROMPT, 'multi')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-700">
+                         <div class="flex items-center gap-3">
+                            <span class="p-1.5 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            </span>
+                            <div class="flex-1">
+                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400">多智能体协作</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Code Writer + Code Reviewer 自动迭代</div>
+                            </div>
+                        </div>
+                    </button>
                 </div>
             </div>
                 </div>
@@ -414,6 +433,18 @@
         const fileChips = document.getElementById('fileChips');
         let uploadedFiles = []; // Stores absolute paths
         let activeUploads = 0;
+        let currentMode = 'single'; // 'single' | 'multi'
+
+        const MULTI_AGENT_PROMPT = `创建一个 Gradio Hello World 单页面应用，要求如下：
+1. 创建一个简单的 Gradio 应用，包含一个文本输入框和一个提交按钮
+2. 当用户输入名字并点击提交时，返回 "Hello, {名字}!" 的问候语
+3. 使用 Gradio Interface API，代码简洁清晰
+4. 主文件命名为 app.py
+5. 安装 gradio==3.50.2 版本
+6. 启动时必须设置 server_name="0.0.0.0"、share=False、enable_queue=False 等关键参数
+7. 运行后请调用 get_public_url(port=7860) 提供访问链接
+
+请确保代码完整、可直接运行。`;
 
         function updateRunButtonState() {
             if (activeUploads > 0) {
@@ -423,7 +454,13 @@
             } else {
                 runBtn.disabled = false;
                 runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                runBtn.querySelector('span').textContent = 'EXECUTE';
+                
+                // Restore text based on mode
+                if (currentMode === 'multi') {
+                    runBtn.querySelector('span').textContent = 'EXECUTE (MULTI-AGENT)';
+                } else {
+                    runBtn.querySelector('span').textContent = 'EXECUTE';
+                }
             }
         }
 
@@ -499,12 +536,28 @@
         });
 
         // Helper: Set Task
-        window.setTask = (text) => {
+        window.setTask = (text, mode = 'single') => {
+            currentMode = mode;
             taskInput.value = text;
             taskInput.focus();
+            
             // Highlight effect
             taskInput.classList.add('ring-2', 'ring-primary/50');
             setTimeout(() => taskInput.classList.remove('ring-2', 'ring-primary/50'), 500);
+
+            // Update UI based on mode
+            const runSpan = runBtn.querySelector('span');
+            if (mode === 'multi') {
+                taskInput.placeholder = "Enter Multi-Agent Task...";
+                runBtn.classList.remove('bg-slate-900', 'dark:bg-primary', 'hover:bg-slate-800', 'dark:hover:bg-primary-hover');
+                runBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700'); // Different color for multi-agent
+                runSpan.textContent = 'EXECUTE (MULTI-AGENT)';
+            } else {
+                taskInput.placeholder = "Initialize task sequence...";
+                runBtn.classList.add('bg-slate-900', 'dark:bg-primary', 'hover:bg-slate-800', 'dark:hover:bg-primary-hover');
+                runBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                runSpan.textContent = 'EXECUTE';
+            }
         };
 
         // Tabs Logic
@@ -875,7 +928,7 @@
             }
         }
 
-        async function runAgentTask(task, threadId = null) {
+        async function runAgentTask(task, threadId = null, mode = 'single') {
             if (!task && !threadId) {
                 taskInput.focus();
                 taskInput.classList.add('ring-2', 'ring-red-500/50');
@@ -918,10 +971,12 @@
                 const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         task: task,
                         files: threadId ? [] : uploadedFiles, // Only send files on new task
-                        thread_id: threadId
+                        thread_id: threadId,
+                        mode: mode,
+                        max_iterations: mode === 'multi' ? 5 : 3
                     })
                 });
 
@@ -975,7 +1030,7 @@
 
         runBtn.addEventListener('click', async () => {
             const task = taskInput.value.trim();
-            runAgentTask(task);
+            await runAgentTask(task, null, currentMode);
         });
 
         // Handle Confirmation Messages from Iframe
