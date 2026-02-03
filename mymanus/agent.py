@@ -7,14 +7,19 @@ from typing import AsyncGenerator, Dict, Any, List, Literal
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, ToolMessage
-from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
-from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langgraph.types import Command
 
+# DeepAgents
+from deepagents import create_deep_agent
+
+# Sandbox Adapters
+from sandbox_adapter_e2b import E2BAdapter
+from sandbox_adapter_opensandbox import OpenSandboxAdapter
+
 # Import our tools
-from sandbox_e2b import TOOLS, TEMPLATE_CODE_INTERPRETER
+from tools import TOOLS, write_file, read_file, list_files
 
 # System Prompt
 SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM)** 中的全栈编程智能体。你的目标是利用 Python 代码和系统命令，自主、高效地解决用户提出的任何技术问题。
@@ -23,7 +28,19 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 *   **OS**: Linux (Debian/Ubuntu based).
 *   **Python**: 3.12+ (预装常用库).
 *   **Root 权限**: 你拥有沙箱的完全控制权 (sudo not required, or available).
-*   **持久化**: `/home/user` 是你的工作目录。
+*   **持久化**: 工作目录通常为 `/home/user` (E2B) 或 `/workspace` (OpenSandbox)。请优先使用**相对路径**或 `os.getcwd()`。
+
+**协作能力 (Subagents):**
+你拥有专业的子智能体可以协助你完成任务：
+*   **CodeWriter**: 专门负责编写、修改代码文件。
+*   **CodeReviewer**: 专门负责代码审查。
+
+**智能决策工作流:**
+1.  **简单任务 (Direct Execution)**: 
+    *   对于简单的数据分析、单文件脚本或快速原型，**请直接由你自己完成**（编写代码 -> 运行 -> 展示）。
+    *   **不要**滥用子智能体，避免不必要的往返延迟。
+2.  **复杂工程 (Collaboration)**:
+    *   仅在构建多文件项目、复杂Web应用或需要严格质量保证时，才采用 "CodeWriter -> CodeReviewer -> Main Agent" 的协作流程。
 
 **核心工作流 (Thought Process):**
 1.  **分析 (Analyze)**: 理解用户需求。如果是模糊的需求（如“分析这个数据”），先查看数据结构。
@@ -56,7 +73,10 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 5.  **禁止 Emoji**: 在正式的 UI 元素（按钮、标题、卡片头）中，请使用 SVG 图标代替 Emoji。
 
 **工具使用最佳实践:**
-*   **依赖管理**: 不要假设库已安装。如果不确定，先 `pip install`。
+*   **依赖管理 (必须优先执行)**: 
+    *   **NO PRE-INSTALLED LIBS**: 沙箱是纯净的 Linux 环境，**默认没有** pandas, numpy, matplotlib, scikit-learn 等库。
+    *   **预安装**: 在执行 `run_code` 运行主逻辑之前，**必须**先调用 `install_package` 或 `run_shell_command("pip install ...")` 安装所有依赖。
+    *   **严禁**直接运行代码而不安装依赖。**严禁**依赖报错后再补装（这会导致死循环）。
 *   **文件路径**: 始终使用绝对路径或相对路径，注意当前工作目录。
 *   **文件操作**: 读写文本文件时（特别是包含中文时），请显式指定 `encoding='utf-8'`。
 *   **Web 服务**: 如果启动 Web 服务，确保绑定到 `0.0.0.0`。
@@ -64,7 +84,7 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
 *   **Streamlit 特别指南**:
     *   **启动命令**: 必须使用 `streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false`。缺少这些参数会导致连接断开。
     *   **后台运行**: 使用 `run_shell_command` 时，务必设置 `is_background=True` 或在命令末尾加 `&`。
-*   **Gradio 特别指南**:
+        *   **Gradio 特别指南**:
     *   **版本建议**: 强烈推荐使用 `pip install gradio==3.50.2`，因为新版本(4.x)在反向代理下常出现样式丢失(404)或连接错误。
         *   **启动代码**: 必须使用以下配置以避免反向代理下的JSON解析错误：
             ```python
@@ -83,31 +103,35 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
                 description="A simple Gradio app that says hello"
             )
             
-            # 关键：share=False时自动非阻塞，并禁用可能导致问题的功能
+            # 关键：share=False时使用内部代理
             demo.launch(
                 server_name="0.0.0.0",
                 server_port=7860,
-                share=False,             # 必须False：使用E2B代理，且非阻塞模式
+                share=False,             # 必须False：使用内部代理
                 show_error=True,
                 enable_queue=False,      # 必须False：禁用队列，避免API调用返回HTML
                 favicon_path=None,       # 避免favicon请求问题
                 inbrowser=False,
+                prevent_thread_lock=True,# 关键：在 run_code 中必须设置，否则会阻塞导致工具无法返回
                 quiet=True               # 减少日志输出
             )
-            # 注意：share=False时，launch()会自动非阻塞，无需blocking参数
+            # 注意：在 Gradio 3.x 中，必须设置 prevent_thread_lock=True 才能实现非阻塞
             ```
         *   **关键参数说明**:
-            - `enable_queue=False`: **必须设置**，禁用队列功能，避免某些API端点返回HTML而非JSON。这是解决JSON解析错误的关键参数。
-            - `share=False`: **必须设置**，不使用gradio的公共链接（使用E2B的代理），且会自动非阻塞运行
-            - `show_error=True`: 显示详细错误信息便于调试
-            - `server_name="0.0.0.0"`: 允许外部访问
+            - `prevent_thread_lock=True`: **必须设置**，确保 `launch()` 后代码继续执行，使 `run_code` 工具能及时返回。
+            - `enable_queue=False`: **必须设置**，禁用队列功能，避免某些API端点返回HTML而非JSON。
+            - `share=False`: **必须设置**，不使用gradio的公共链接（使用内部代理）。
+        *   **高级用法 (.app)**: 
+            - 如果需要将 Gradio 集成到 FastAPI 中，可以使用 `demo.app` 获取 FastAPI 实例，例如 `app = demo.app`。
         *   **启动方式**: 
-            - 如果使用 `run_code` 执行，确保代码最后一行是 `demo.launch(...)`，`share=False`会自动非阻塞
-            - 如果使用 `run_shell_command`，使用 `python app.py &` 在后台运行
+            - 如果使用 `run_code` 执行，确保最后调用 `demo.launch(..., prevent_thread_lock=True)`。
+            - 如果使用 `run_shell_command`，使用 `python app.py &` 在后台运行。
         *   **故障排除**: 
             - 如果仍然出现JSON解析错误，尝试在启动前设置环境变量：`os.environ['GRADIO_SERVER_NAME'] = '0.0.0.0'`
-            - 确保端口7860没有被占用：先执行 `kill -9 $(lsof -t -i:7860) 2>/dev/null || true`
-        *   **端口**: 默认端口通常为 `7860`。
+            - **OpenSandbox 白屏问题**: 
+                1. 访问链接必须以 `/` 结尾（工具已自动处理）。
+                2. OpenSandbox 环境默认设置了 `GRADIO_ROOT_PATH=/proxy/7860`。如果使用其他端口，必须手动在 `launch()` 中设置 `root_path="/proxy/{port}"`。
+            - 确保端口7860没有被占用：先执行 `kill -9 $(lsof -t -i:7860) 2>/dev/null || true`        *   **端口**: 默认端口通常为 `7860`。
         *   **访问**: 运行后必须调用 `get_public_url(port=7860)`。
 
 请始终使用**中文**与用户交流，保持专业、简洁且乐于助人。
@@ -127,6 +151,7 @@ CODE_WRITER_PROMPT = """你是一个专业的代码编写智能体。你的职�
 - **必须**使用 `write_file` 工具将所有代码写入文件。
 - **不要**仅仅在回复中展示代码块，除非你已经调用了 `write_file`。
 - 如果你不调用 `write_file`，文件将不会被保存，任务将失败。
+- **依赖处理**: 如果代码使用了第三方库（如 pandas, numpy），必须先创建一个 `requirements.txt` 文件，并告知主智能体安装它。
 
 **编码标准：**
 - 使用清晰的变量和函数命名
@@ -137,9 +162,11 @@ CODE_WRITER_PROMPT = """你是一个专业的代码编写智能体。你的职�
 
 **工作流程：**
 1. 分析任务需求，规划需要创建的文件
-2. 使用 write_file 工具创建代码文件
-3. 如果收到审查反馈，仔细阅读并改进代码
-4. 确保所有文件都已创建并保存
+2. **依赖分析**: 检查代码中导入的第三方库。
+3. **创建依赖文件**: 使用 `write_file` 创建 `requirements.txt`（如果需要）。
+4. 使用 `write_file` 工具创建代码文件。
+5. 如果收到审查反馈，仔细阅读并改进代码。
+6. 确保所有文件都已创建并保存。
 
 **可用工具：**
 - write_file: 创建或覆盖文件
@@ -162,28 +189,17 @@ CODE_REVIEWER_PROMPT = """你是一个专业的代码审查智能体。你的职
 **审查标准：**
 - ✓ **通过 (approved)**: 代码质量良好，满足需求，可以使用
 - ✗ **需要改进 (needs_improvement)**: 存在明显问题，需要修改
+- **宽松模式**: 对于简单的脚本或原型，只要能运行且无严重安全问题，应直接通过，不要吹毛求疵。
 
 **反馈格式：**
-你必须返回 JSON 格式的审查结果：
-```json
-{
-  "status": "approved" 或 "needs_improvement",
-  "comments": ["评论1", "评论2"],
-  "suggestions": ["建议1", "建议2"]
-}
-```
+请返回详细的审查报告，明确指出问题（如果有）和改进建议。
+如果代码通过，请明确说明“审查通过”。
 
 **审查流程：**
 1. **首先**使用 `list_files` 工具列出 /home/user 目录，确认实际存在哪些文件
 2. 使用 `read_file` 工具读取所有相关文件
 3. 仔细分析代码质量和功能完整性
 4. 列出具体的问题和改进建议
-5. 返回结构化的审查结果
-
-**注意事项：**
-- 提供具体、可操作的建议，而不是泛泛而谈
-- 如果代码基本满足需求，不要过于苛刻
-- 关注重要问题，忽略微小的风格差异
 
 请始终使用中文回复，保持专业和建设性。
 """
@@ -209,12 +225,29 @@ class ManusAgent:
             
         self.tools = TOOLS
         
-        # Use create_agent from langchain with middleware
+        # Define Subagents
+        self.subagents = [
+            {
+                "name": "CodeWriter",
+                "description": "A specialized agent for writing Python code and creating files. Use this for all coding tasks.",
+                "system_prompt": CODE_WRITER_PROMPT,
+                "tools": [write_file, read_file, list_files],
+            },
+            {
+                "name": "CodeReviewer",
+                "description": "A specialized agent for reviewing code quality, security, and functionality. Use this to verify code after writing.",
+                "system_prompt": CODE_REVIEWER_PROMPT,
+                "tools": [read_file, list_files],
+            }
+        ]
+        
+        # Use create_deep_agent
         if self.model:
-            self.graph = create_agent(
+            self.graph = create_deep_agent(
                 model=self.model,
                 tools=self.tools,
                 system_prompt=SYSTEM_PROMPT,
+                subagents=self.subagents,
                 checkpointer=MemorySaver(),
                 middleware=[
                     HumanInTheLoopMiddleware(
@@ -240,8 +273,8 @@ class ManusAgent:
         self,
         task: str = None,
         thread_id: str = None,
-        mode: Literal["single", "multi"] = "single",
-        max_iterations: int = 3
+        sandbox_provider: Literal["e2b", "opensandbox"] = "e2b",
+        **kwargs
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Executes the agent loop.
@@ -249,20 +282,12 @@ class ManusAgent:
         Args:
             task: Task description
             thread_id: Thread ID for resumption
-            mode: "single" for single agent, "multi" for multi-agent collaboration
-            max_iterations: Max iterations for multi-agent mode
-
-        Returns:
-            AsyncGenerator of events
+            sandbox_provider: "e2b" or "opensandbox"
         """
-        if mode == "single":
-            async for event in self._run_single(task, thread_id):
-                yield event
-        else:
-            async for event in self._run_multi(task, max_iterations):
-                yield event
+        async for event in self._run_loop(task, thread_id, sandbox_provider):
+            yield event
 
-    async def _run_single(self, task: str = None, thread_id: str = None) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _run_loop(self, task: str = None, thread_id: str = None, sandbox_provider: str = "e2b") -> AsyncGenerator[Dict[str, Any], None]:
         """
         Executes the agent loop.
         If thread_id is provided, it resumes that thread.
@@ -275,24 +300,38 @@ class ManusAgent:
         if not thread_id:
             thread_id = str(uuid.uuid4())
         
-        # Initialize Sandbox if needed
-        from e2b_code_interpreter import AsyncSandbox
-        
         try:
-            # Check if sandbox is healthy
+            # Check if sandbox is healthy and matches provider
             is_healthy = False
+            current_provider = getattr(self.sandbox, "_provider_name", None)
+            
             if self.sandbox:
                 try:
-                    is_healthy = await self.sandbox.is_running()
+                    if current_provider == sandbox_provider:
+                        is_healthy = await self.sandbox.is_running()
+                    else:
+                        # Provider changed, force kill
+                        await self.sandbox.stop()
+                        is_healthy = False
                 except:
                     is_healthy = False
 
             if not is_healthy:
-                yield {"type": "status", "message": "Initializing E2B Sandbox..."}
-                self.sandbox = await AsyncSandbox.create(TEMPLATE_CODE_INTERPRETER)
-                yield {"type": "system", "message": f"Sandbox created: {self.sandbox.sandbox_id}"}
+                yield {"type": "status", "message": f"Initializing {sandbox_provider} Sandbox..."}
+                
+                if sandbox_provider == "opensandbox":
+                    self.sandbox = OpenSandboxAdapter()
+                    self.sandbox._provider_name = "opensandbox"
+                else:
+                    self.sandbox = E2BAdapter()
+                    self.sandbox._provider_name = "e2b"
+                    
+                await self.sandbox.start()
+                yield {"type": "system", "message": f"Sandbox created: {self.sandbox.id}"}
             else:
-                yield {"type": "system", "message": f"Reusing sandbox: {self.sandbox.sandbox_id}"}
+                yield {"type": "system", "message": f"Reusing sandbox: {self.sandbox.id}"}
+            
+            yield {"type": "system", "message": f"Using DeepAgents multi-agent framework with {sandbox_provider}."}
                 
             # Config with sandbox
             config = {
@@ -303,31 +342,52 @@ class ManusAgent:
                 "recursion_limit": 100
             }
 
-            # Initialize turn count based on existing message history
+            # Initialize turn count for this execution session
+            # We track turns within the current task execution, not across all history
             state = self.graph.get_state(config)
-            existing_messages = state.values.get("messages", [])
-            # Each pair of Human+AI is one turn, plus the current one
-            current_turn = len([m for m in existing_messages if hasattr(m, 'content') and m.content]) // 2
+
+            # If this is a new task (has task parameter), reset turn counter
+            # If resuming (no task parameter), continue from where we left off
+            if task:
+                # New task: start from turn 0
+                current_turn = 0
+            else:
+                # Resuming: count turns in current execution by looking at recent messages
+                # Count how many AI responses have been generated in this execution
+                existing_messages = state.values.get("messages", [])
+                # Count AI messages (which represent completed turns)
+                current_turn = len([m for m in existing_messages if hasattr(m, 'type') and m.type == 'ai'])
             
-            # Input format:
-            # If new task: {"messages": [HumanMessage(content=task)]}
-            # If resumption: Command(resume={"decisions": [{"type": "approve"}]})
+            # Input format
             inputs = None
             if task:
                 inputs = {"messages": [HumanMessage(content=task)]}
             else:
-                # Assuming resumption implies approval for now
-                # We need to wrap it in a dict because HumanInTheLoopMiddleware expects "decisions" key
-                # "approve" is the correct type, not "accept"
-                inputs = Command(resume={"decisions": [{"type": "approve"}]})
+                # Resuming - we need to approve ALL pending tool calls
+                # Get the state to find out how many tool calls are pending
+                current_state = self.graph.get_state(config)
+                last_message = current_state.values.get("messages", [])[-1] if current_state.values.get("messages") else None
+                
+                num_calls = 1 # Default
+                if last_message and hasattr(last_message, "tool_calls"):
+                     num_calls = len(last_message.tool_calls) or 1
+                
+                # Create a decision for each pending tool call
+                decisions = [{"type": "approve"} for _ in range(num_calls)]
+                inputs = Command(resume={"decisions": decisions})
             
             # Use astream_events to pipe results to frontend
             async for event in self.graph.astream_events(inputs, config=config, version="v2"):
                 kind = event["event"]
                 
                 if kind == "on_chat_model_start":
+                    # Get agent name from metadata
+                    metadata = event.get("metadata", {})
+                    agent_name = metadata.get("langgraph_node", "Agent")
+                    
                     current_turn += 1
-                    yield {"type": "status", "message": f"Thinking (Turn {current_turn})..."}
+                    # Match frontend regex: Thinking (Turn \d+)
+                    yield {"type": "status", "message": f"Thinking (Turn {current_turn}) [{agent_name}]..."}
 
                 elif kind == "on_chat_model_stream":
                     content = event["data"]["chunk"].content
@@ -336,6 +396,9 @@ class ManusAgent:
 
                 elif kind == "on_chat_model_end":
                     output = event["data"].get("output")
+                    metadata = event.get("metadata", {})
+                    node_name = metadata.get("langgraph_node", "")
+
                     if output:
                         tool_calls = getattr(output, "tool_calls", [])
                         if tool_calls:
@@ -348,10 +411,21 @@ class ManusAgent:
                                 ]
                             }
                         elif output.content:
-                            yield {
-                                "type": "answer",
-                                "content": output.content
-                            }
+                            # Distinguish between Main Agent and Subagents
+                            # Main agent node is typically 'agent'
+                            # Subagent nodes match the names in self.subagents
+                            if node_name in ["CodeWriter", "CodeReviewer"]:
+                                yield {
+                                    "type": "subagent_answer",
+                                    "agent": node_name,
+                                    "content": output.content
+                                }
+                            else:
+                                # Main Agent's final answer
+                                yield {
+                                    "type": "answer",
+                                    "content": output.content
+                                }
                         
                 elif kind == "on_tool_start":
                     yield {"type": "status", "message": f"Calling tool: {event['name']}"}
@@ -392,10 +466,6 @@ class ManusAgent:
             state = self.graph.get_state(config)
             if state.next:
                 # We are paused.
-                # Check what the next step is
-                # For HumanInTheLoopMiddleware, the interruption details might be in state
-                # But since we configured interrupt_on for tools, seeing pending tool calls is enough
-                
                 # Check for pending tool calls in the last message
                 if state.values.get("messages"):
                     last_message = state.values["messages"][-1]
@@ -584,379 +654,6 @@ class ManusAgent:
             yield {"type": "error", "message": f"Agent Error: {str(e)}"}
             import traceback
             traceback.print_exc()
-
-    async def _run_multi(
-        self,
-        task: str,
-        max_iterations: int = 3
-    ) -> AsyncGenerator[Dict[str, Any], None]:
-        """Multi-agent collaboration mode (Code Writer + Code Reviewer)"""
-
-        if not self.model:
-            yield {"type": "error", "message": "Agent not initialized (check API Key)."}
-            return
-
-        # Initialize sandbox
-        from e2b_code_interpreter import AsyncSandbox
-
-        try:
-            is_healthy = False
-            if self.sandbox:
-                try:
-                    is_healthy = await self.sandbox.is_running()
-                except:
-                    is_healthy = False
-
-            if not is_healthy:
-                yield {"type": "status", "message": "初始化 E2B Sandbox..."}
-                self.sandbox = await AsyncSandbox.create(TEMPLATE_CODE_INTERPRETER)
-                yield {"type": "system", "message": f"Sandbox created: {self.sandbox.sandbox_id}"}
-            else:
-                yield {"type": "system", "message": f"Reusing sandbox: {self.sandbox.sandbox.sandbox_id}"}
-
-        except Exception as e:
-            yield {"type": "error", "message": f"Sandbox initialization failed: {str(e)}"}
-            return
-
-        # Create file tools for multi-agent mode
-        files_created = []
-
-        @tool
-        async def write_file(path: str, content: str) -> str:
-            """在沙箱中创建或覆盖文件。必须提供文件路径(path)和文件内容(content)。"""
-            try:
-                full_path = f"/home/user/{path}" if not path.startswith("/") else path
-                await asyncio.wait_for(
-                    self.sandbox.files.write(full_path, content),
-                    timeout=30.0
-                )
-                clean_path = path
-                if clean_path.startswith("./"):
-                    clean_path = clean_path[2:]
-                elif clean_path.startswith("/home/user/"):
-                    clean_path = clean_path.replace("/home/user/", "")
-                if clean_path not in files_created:
-                    files_created.append(clean_path)
-                return f"✓ 文件已创建: {clean_path}"
-            except asyncio.TimeoutError:
-                return f"✗ 写入文件超时 ({path}): 写入操作超过 30 秒"
-            except Exception as e:
-                return f"✗ 写入文件失败 ({path}): {type(e).__name__}: {str(e)}"
-
-        @tool
-        async def read_file(path: str) -> str:
-            """读取文件内容。参数: path (文件路径)"""
-            try:
-                full_path = f"/home/user/{path}" if not path.startswith("/") else path
-                try:
-                    content = await asyncio.wait_for(
-                        self.sandbox.files.read(full_path),
-                        timeout=10.0
-                    )
-                    return f"=== {path} ===\n{content}"
-                except asyncio.TimeoutError:
-                    return f"✗ 读取文件超时 ({path}): 文件读取超过 10 秒"
-            except FileNotFoundError:
-                return f"✗ 文件不存在 ({path}): 请使用 list_files 确认文件是否存在"
-            except Exception as e:
-                return f"✗ 读取文件失败 ({path}): {type(e).__name__}: {str(e)}"
-
-        @tool
-        async def list_files(directory: str = "/home/user") -> str:
-            """列出目录中的文件。参数: directory (目录路径，默认 /home/user)"""
-            try:
-                try:
-                    files = await asyncio.wait_for(
-                        self.sandbox.files.list(directory),
-                        timeout=10.0
-                    )
-                    if not files:
-                        return f"目录 {directory} 为空"
-                    return "\n".join([f"- {f.name} ({'dir' if f.type == 'dir' else 'file'})" for f in files])
-                except asyncio.TimeoutError:
-                    return f"✗ 列出文件超时 ({directory}): 操作超过 10 秒"
-            except Exception as e:
-                return f"✗ 列出文件失败 ({directory}): {type(e).__name__}: {str(e)}"
-
-        # Create Code Writer and Code Reviewer agents
-        code_writer = create_agent(
-            model=self.model,
-            tools=[write_file, read_file, list_files],
-            system_prompt=CODE_WRITER_PROMPT
-        )
-
-        code_reviewer = create_agent(
-            model=self.model,
-            tools=[read_file, list_files],
-            system_prompt=CODE_REVIEWER_PROMPT
-        )
-
-        yield {"type": "status", "message": "🎯 开始多智能体协作"}
-        yield {"type": "system", "message": f"任务: {task}"}
-
-        # Iteration loop
-        for iteration in range(1, max_iterations + 1):
-            yield {"type": "status", "message": f"Thinking (Turn {iteration})"}
-
-            # Phase 1: Code Writing
-            yield {"type": "status", "message": "Calling tool: CodeWriter"}
-            yield {"type": "status", "message": "📝 Code Writer 正在编写代码..."}
-
-            try:
-                feedback = None
-                if iteration > 1:
-                    # Get feedback from previous iteration
-                    pass
-
-                if feedback:
-                    input_text = f"""任务: {task}\n\n代码审查反馈:\n{feedback}\n\n请根据反馈改进代码。"""
-                else:
-                    input_text = f"""任务: {task}\n\n请编写完整的代码实现。"""
-
-                config = {"configurable": {"thread_id": str(uuid.uuid4())}}
-                result = await code_writer.ainvoke({"messages": [("user", input_text)]}, config)
-
-                output = ""
-                if "messages" in result:
-                    for msg in reversed(result["messages"]):
-                        if msg.type == "ai":
-                            output = msg.content
-                            break
-
-                # Extract files from output
-                for line in output.split("\n"):
-                    if "文件已创建:" in line:
-                        path = line.split("文件已创建:")[-1].strip()
-                        if path.startswith("./"):
-                            path = path[2:]
-                        elif path.startswith("/home/user/"):
-                            path = path.replace("/home/user/", "")
-                        if path and path not in files_created:
-                            files_created.append(path)
-
-                yield {"type": "output", "content": "✓ Code Writer 完成"}
-                yield {"type": "output", "content": f"创建的文件: {', '.join(files_created) if files_created else '(无)'}"}
-
-            except Exception as e:
-                yield {"type": "error", "message": f"Code Writer 错误: {str(e)}"}
-                break
-
-            # Phase 2: Code Review
-            yield {"type": "status", "message": "Calling tool: CodeReviewer"}
-            yield {"type": "status", "message": "🔍 Code Reviewer 正在审查代码..."}
-
-            try:
-                # List actual files in sandbox
-                files_to_review = set(files_created)
-                try:
-                    files_list = await asyncio.wait_for(
-                        self.sandbox.files.list("/home/user"),
-                        timeout=15.0
-                    )
-                    for f in files_list:
-                        if f.type != 'dir' and not f.name.startswith('.'):
-                            files_to_review.add(f.name)
-                except Exception:
-                    pass
-
-                files_to_review = sorted(list(files_to_review))
-                yield {"type": "status", "message": f"📂 准备审查文件: {', '.join(files_to_review) if files_to_review else '无'}"}
-
-                review_input = f"""
-原始任务: {task}
-
-需要审查的文件列表:
-{chr(10).join([f'- {f}' for f in files_to_review]) if files_to_review else '(无文件)'}
-
-**重要指令**:
-1. **首先**使用 `list_files("/home/user")` 工具确认实际存在哪些文件。
-2. 你必须**逐个**使用 `read_file` 工具读取文件内容。
-3. 不要假设文件内容，必须基于 `read_file` 的返回结果进行审查。
-4. 如果文件读取失败或超时，请在评论中指出具体错误信息。
-5. 审查完成后，返回 JSON 格式的审查结果。
-
-请开始审查...
-"""
-                config = {"configurable": {"thread_id": str(uuid.uuid4())}}
-                result = await code_reviewer.ainvoke({"messages": [("user", review_input)]}, config)
-
-                output = ""
-                if "messages" in result:
-                    for msg in reversed(result["messages"]):
-                        if msg.type == "ai":
-                            output = msg.content
-                            break
-
-                # Parse review result
-                review_result = self._parse_review_result(output)
-                feedback_status = review_result.get("status", "needs_improvement")
-                feedback_comments = review_result.get("comments", [])
-                feedback_suggestions = review_result.get("suggestions", [])
-
-                yield {"type": "output", "content": "✓ Code Reviewer 完成"}
-                yield {"type": "output", "content": f"审查状态: {feedback_status}"}
-                if feedback_comments:
-                    yield {"type": "output", "content": f"评论: {chr(10).join(feedback_comments)}"}
-                if feedback_suggestions:
-                    yield {"type": "output", "content": f"建议: {chr(10).join(feedback_suggestions)}"}
-
-                if feedback_status == "approved":
-                    yield {"type": "status", "message": "✅ 代码审查通过！"}
-                    yield {"type": "answer", "content": f"🎉 多智能体任务完成！共经过 {iteration} 轮迭代。"}
-
-                    # Try to run the application
-                    entry_point = self._find_entry_point(files_created)
-                    if entry_point:
-                        async for event in self._execute_application(entry_point, task):
-                            yield event
-                    break
-                else:
-                    if iteration < max_iterations:
-                        yield {"type": "status", "message": "⚠️ 需要改进，准备下一轮迭代..."}
-                    else:
-                        yield {"type": "status", "message": "⚠️ 达到最大迭代次数，停止迭代。"}
-                        yield {"type": "answer", "content": f"已完成 {max_iterations} 轮迭代。最终审查状态: {feedback_status}"}
-                        break
-
-            except Exception as e:
-                yield {"type": "error", "message": f"Code Reviewer 错误: {str(e)}"}
-                break
-
-    def _parse_review_result(self, output: str) -> Dict[str, Any]:
-        """Parse code review result from LLM output"""
-        try:
-            # Try to extract JSON block
-            json_block = re.search(r"```json\s*([\s\S]*?)\s*```", output)
-            if json_block:
-                return json.loads(json_block.group(1).strip())
-
-            # Try to find JSON object
-            possible_json = re.search(r"\{[\s\S]*\}", output)
-            if possible_json:
-                return json.loads(possible_json.group(0))
-        except Exception:
-            pass
-
-        # Fallback parsing
-        status = "needs_improvement"
-        if "approved" in output.lower() or "通过" in output:
-            status = "approved"
-
-        comments = []
-        suggestions = []
-        lines = output.split("\n")
-        section = "comments"
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            if "建议" in line or "suggestion" in line.lower():
-                section = "suggestions"
-                continue
-            if "评论" in line or "comment" in line.lower():
-                section = "comments"
-                continue
-            if line.startswith("-") or line.startswith("•") or line[0].isdigit():
-                content = line.lstrip("-•0123456789. ").strip()
-                if section == "suggestions":
-                    suggestions.append(content)
-                else:
-                    comments.append(content)
-
-        return {
-            "status": status,
-            "comments": comments if comments else ["审查完成"],
-            "suggestions": suggestions
-        }
-
-    def _find_entry_point(self, files: List[str]) -> str | None:
-        """Find the main entry point file"""
-        priority_names = ["main.py", "app.py", "streamlit_app.py", "run.py", "server.py"]
-        for name in priority_names:
-            if name in files:
-                return name
-
-        py_files = [f for f in files if f.endswith(".py")]
-        if py_files:
-            candidates = [f for f in py_files if "test" not in f]
-            if not candidates:
-                candidates = py_files
-            if len(candidates) == 1:
-                return candidates[0]
-            return min(candidates, key=len)
-
-        return None
-
-    async def _execute_application(self, entry_point: str, task: str):
-        """Execute the created application"""
-        try:
-            # Install requirements.txt if exists
-            try:
-                req_content = await self.sandbox.files.read("/home/user/requirements.txt")
-                if req_content:
-                    yield {"type": "status", "message": "📦 检测到 requirements.txt，正在安装依赖..."}
-                    req_cmd = "pip install -r /home/user/requirements.txt"
-                    install_result = await self.sandbox.commands.run(req_cmd, timeout=300)
-                    if install_result.exit_code != 0:
-                        yield {"type": "error", "message": f"依赖安装失败: {install_result.stderr}"}
-                    else:
-                        yield {"type": "output", "content": "✓ 依赖安装完成"}
-            except:
-                pass
-
-            full_path = f"/home/user/{entry_point}" if not entry_point.startswith("/") else entry_point
-
-            # Detect app type
-            is_streamlit = "streamlit" in entry_point.lower() or "streamlit" in task.lower()
-            is_gradio = "gradio" in entry_point.lower() or "gradio" in task.lower() or entry_point == "app.py"
-
-            if is_streamlit:
-                yield {"type": "status", "message": "📦 正在安装 Streamlit..."}
-                await self.sandbox.commands.run("pip install streamlit -q")
-                cmd = f"streamlit run {full_path} --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false"
-                port = 8501
-                app_type = "Streamlit App"
-            elif is_gradio:
-                yield {"type": "status", "message": "📦 正在安装 Gradio..."}
-                await self.sandbox.commands.run("pip install gradio==3.50.2 -q")
-                # Gradio with share=False runs non-blocking
-                yield {"type": "status", "message": f"🚀 正在启动 Gradio 应用: {entry_point}"}
-                cmd = f"python3 {full_path}"
-                port = 7860
-                app_type = "Gradio App"
-            else:
-                cmd = f"python3 {full_path}"
-                port = 8000
-                app_type = "Web App"
-
-            is_web = is_streamlit or is_gradio or "app.py" in entry_point or "main.py" in entry_point
-
-            if is_web:
-                yield {"type": "status", "message": f"启动 {app_type} 服务中..."}
-                process = await self.sandbox.commands.run(cmd, background=True)
-
-                # Wait a bit for the service to start
-                await asyncio.sleep(5)
-
-                try:
-                    host = self.sandbox.get_host(port)
-                    url = f"https://{host}"
-                    yield {"type": "status", "message": f"🔗 正在暴露服务: {url}"}
-                    yield {"type": "file_preview", "path": f"{app_type} (Port {port})", "mime": "url", "content": url}
-                except Exception as e:
-                    yield {"type": "error", "message": f"无法获取公共链接: {str(e)}"}
-            else:
-                result = await self.sandbox.commands.run(cmd, timeout=60)
-                output = []
-                if result.stdout:
-                    output.append(f"STDOUT:\n{result.stdout}")
-                if result.stderr:
-                    output.append(f"STDERR:\n{result.stderr}")
-                yield {"type": "output", "content": "\n".join(output) if output else "(无输出)"}
-
-        except Exception as e:
-            yield {"type": "error", "message": f"运行失败: {str(e)}"}
 
 if __name__ == "__main__":
     agent = ManusAgent()

@@ -12,8 +12,6 @@ import shutil
 import os
 from agent import ManusAgent
 
-import sandbox_e2b
-
 # Load environment variables
 load_dotenv()
 
@@ -55,6 +53,7 @@ class TaskRequest(BaseModel):
     thread_id: Optional[str] = None
     mode: Optional[Literal["single", "multi"]] = "single"
     max_iterations: Optional[int] = 3
+    sandbox_provider: Optional[Literal["e2b", "opensandbox"]] = "e2b"
 
 @app.post("/api/upload")
 def upload_file(file: UploadFile = File(...)):
@@ -71,10 +70,6 @@ async def run_task(request: TaskRequest):
     """Run task in single-agent or multi-agent mode"""
     # Use global agent instance
     agent = agent_instance
-
-    # Determine mode
-    mode = request.mode or "single"
-    max_iterations = request.max_iterations or 3
 
     # Inject file context if files exist
     prompt = request.task
@@ -101,8 +96,7 @@ async def run_task(request: TaskRequest):
             async for event in agent.run(
                 prompt,
                 thread_id=request.thread_id,
-                mode=mode,
-                max_iterations=max_iterations
+                sandbox_provider=request.sandbox_provider
             ):
                 yield json.dumps(event) + "\n"
                 # Small delay to ensure UI updates smoothly if events come too fast

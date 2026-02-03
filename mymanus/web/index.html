@@ -162,9 +162,20 @@
                 <h1 class="font-semibold text-lg tracking-tight text-slate-800 dark:text-white/90">Manus<span class="text-blue-500 dark:text-blue-400">Agent</span></h1>
             </div>
             
-            <div class="ml-auto flex items-center gap-3">
-                 <!-- Theme Toggle -->
-                 <button id="themeToggle" class="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors focus:outline-none">
+            <div class="ml-auto flex items-center gap-2">
+                <!-- Sandbox Segmented Control -->
+                <div class="flex p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5 backdrop-blur-md">
+                    <button id="btnOpenSandbox" onclick="switchSandbox('opensandbox')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm">
+                        Open
+                    </button>
+                    <button id="btnE2B" onclick="switchSandbox('e2b')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                        E2B
+                    </button>
+                    <input type="hidden" id="sandboxProvider" value="opensandbox">
+                </div>
+
+                <!-- Theme Toggle -->
+                <button id="themeToggle" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-500 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95 focus:outline-none">
                     <svg id="sunIcon" class="w-4 h-4 hidden dark:block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                     </svg>
@@ -172,14 +183,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
                 </button>
-
-                <div class="flex items-center gap-2 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                    <div class="relative flex h-2 w-2">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </div>
-                    <span class="text-[10px] font-medium text-green-600 dark:text-green-400 tracking-wide uppercase">Online</span>
-                </div>
             </div>
         </header>
 
@@ -195,7 +198,7 @@
                 <div class="relative group flex-1 flex flex-col gap-3">
                     <textarea 
                         id="taskInput" 
-                        class="w-full flex-1 min-h-[130px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
+                        class="w-full flex-1 min-h-[130px] bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-[13px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all resize-none font-mono leading-relaxed shadow-sm dark:shadow-inner"
                         placeholder="Initialize task sequence..."
                         spellcheck="false"
                     ></textarea>
@@ -229,19 +232,6 @@
                             <div class="flex-1">
                                 <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">深度数据洞察</div>
                                 <div class="text-[10px] text-slate-500 dark:text-slate-400">Pandas + Plotly Bar Chart</div>
-                            </div>
-                        </div>
-                    </button>
-
-                    <!-- Type 3: Gradio App -->
-                    <button onclick="setTask('请在沙箱中安装 gradio==3.50.2，创建一个简单的 Hello World 应用（包含一个输入框和提交按钮）。启动时必须设置 server_name=&quot;0.0.0.0&quot;、share=False、enable_queue=False 等关键参数以避免反向代理下的JSON解析错误。使用 run_code 执行时，share=False 会自动非阻塞运行。运行后请调用 get_public_url(port=7860) 提供访问链接。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-orange-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700">
-                         <div class="flex items-center gap-3">
-                            <span class="p-1.5 rounded-md bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            </span>
-                            <div class="flex-1">
-                                <div class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-orange-600 dark:group-hover:text-orange-400">Gradio 应用</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400">Python Gradio + Public URL</div>
                             </div>
                         </div>
                     </button>
@@ -297,22 +287,6 @@
 
             <!-- Environment Info -->
             <div class="p-4 rounded-lg glass-panel text-xs space-y-2 mt-auto hidden">
-                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/5 pb-2 mb-2">
-                    <span>Architecture</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">LangChain 1.0</span>
-                </div>
-                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                    <span>Environment</span>
-                    <span class="text-blue-600 dark:text-blue-400 font-mono">E2B Firecracker</span>
-                </div>
-                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                    <span>Runtime</span>
-                    <span class="text-yellow-600 dark:text-yellow-400 font-mono">Python 3.12</span>
-                </div>
-                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                    <span>Model</span>
-                    <span class="text-purple-600 dark:text-purple-400 font-mono">DeepSeek V3</span>
-                </div>
             </div>
 
             <!-- Action Bar -->
@@ -373,14 +347,6 @@
                 <div class="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
                 
                 <div id="terminalOutput" class="flex-1 overflow-y-auto p-8 font-mono text-[13px] leading-relaxed relative z-10">
-                     <div class="text-slate-500 dark:text-slate-500 mb-6 border-b border-slate-200 dark:border-white/5 pb-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-blue-500">➜</span>
-                            <span class="text-slate-700 dark:text-slate-300">init_session</span>
-                            <span class="text-slate-400 dark:text-slate-600">--environment=e2b-firecracker</span>
-                        </div>
-                        <p class="pl-5 opacity-70">Manus Agent initialized. Sandbox ready. Waiting for input...</p>
-                    </div>
                     <div id="logs" class="space-y-3 pl-2 border-l-2 border-slate-200 dark:border-white/5"></div>
                     <div class="mt-4 pl-5 text-blue-500 font-bold typing-cursor inline-block">&nbsp;</div>
                 </div>
@@ -435,16 +401,23 @@
         let activeUploads = 0;
         let currentMode = 'single'; // 'single' | 'multi'
 
-        const MULTI_AGENT_PROMPT = `创建一个 Gradio Hello World 单页面应用，要求如下：
-1. 创建一个简单的 Gradio 应用，包含一个文本输入框和一个提交按钮
-2. 当用户输入名字并点击提交时，返回 "Hello, {名字}!" 的问候语
-3. 使用 Gradio Interface API，代码简洁清晰
-4. 主文件命名为 app.py
-5. 安装 gradio==3.50.2 版本
-6. 启动时必须设置 server_name="0.0.0.0"、share=False、enable_queue=False 等关键参数
-7. 运行后请调用 get_public_url(port=7860) 提供访问链接
+        window.switchSandbox = (provider) => {
+            const input = document.getElementById('sandboxProvider');
+            input.value = provider;
+            
+            const btnOpen = document.getElementById('btnOpenSandbox');
+            const btnE2B = document.getElementById('btnE2B');
+            
+            if (provider === 'opensandbox') {
+                btnOpen.className = 'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm';
+                btnE2B.className = 'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
+            } else {
+                btnE2B.className = 'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm';
+                btnOpen.className = 'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
+            }
+        };
 
-请确保代码完整、可直接运行。`;
+        const MULTI_AGENT_PROMPT = `创建一个 Gradio Hello World 单页面应用。要求：1. 包含文本输入和提交按钮；2. 输入名字返回 "Hello, {名字}!"；3. 使用 Interface API；4. 文件名 app.py；5. 安装 gradio==3.50.2；6. 设置 server_name="0.0.0.0"、share=False、enable_queue=False；7. 运行后调用 get_public_url(port=7860) 展示链接。`;
 
         function updateRunButtonState() {
             if (activeUploads > 0) {
@@ -808,6 +781,26 @@
                     logsContainer.appendChild(outBlock);
                     terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
                     break;
+                case 'subagent_answer':
+                    await appendLog(`[${event.agent}] Output:`, 'success');
+                    const subagentBlock = document.createElement('div');
+                    subagentBlock.className = 'ml-12 my-2 p-5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm font-sans text-slate-800 dark:text-slate-200 whitespace-pre-wrap shadow-sm';
+                    subagentBlock.textContent = event.content;
+                    logsContainer.appendChild(subagentBlock);
+                    terminalOutput.scrollTo({ top: terminalOutput.scrollHeight, behavior: 'smooth' });
+
+                    // Add Subagent Answer to Workflow
+                    if (currentTurnDiv) {
+                        const div = document.createElement('div');
+                        div.className = 'mt-3 p-3 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-lg text-xs text-slate-600 dark:text-slate-300 leading-relaxed';
+                        div.innerHTML = `<div class="flex items-center gap-2 mb-1 text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-tighter">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            ${event.agent} Output
+                        </div>${event.content.substring(0, 300)}${event.content.length > 300 ? '...' : ''}`;
+                        currentTurnDiv.appendChild(div);
+                        workflowContainer.scrollTo({ top: workflowContainer.scrollHeight, behavior: 'smooth' });
+                    }
+                    break;
                 case 'answer':
                     await appendLog('Agent Answer:', 'success');
                     const answerBlock = document.createElement('div');
@@ -936,6 +929,9 @@
                 return;
             }
 
+            // Get selected sandbox provider
+            const sandboxProvider = document.getElementById('sandboxProvider').value;
+
             // Disable UI
             runBtn.disabled = true;
             const originalBtnContent = runBtn.innerHTML;
@@ -976,7 +972,8 @@
                         files: threadId ? [] : uploadedFiles, // Only send files on new task
                         thread_id: threadId,
                         mode: mode,
-                        max_iterations: mode === 'multi' ? 5 : 3
+                        max_iterations: mode === 'multi' ? 5 : 3,
+                        sandbox_provider: sandboxProvider
                     })
                 });
 

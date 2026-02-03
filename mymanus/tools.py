@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from e2b_code_interpreter import AsyncSandbox
+from sandbox_interface import BaseSandbox
 
 # --- Configuration ---
 # Template IDs for E2B Sandboxes
@@ -18,11 +18,11 @@ if not os.getenv("E2B_API_KEY"):
 
 # --- Code Interpreter / Standard Sandbox Helpers ---
 
-def get_sandbox(config: RunnableConfig) -> AsyncSandbox:
+def get_sandbox(config: RunnableConfig) -> BaseSandbox:
     """Helper to extract sandbox from config."""
     sandbox = config.get("configurable", {}).get("sandbox")
     if not sandbox:
-        raise RuntimeError("E2B Sandbox not found in configurable config.")
+        raise RuntimeError("Sandbox not found in configurable config.")
     return sandbox
 
 # --- Tools ---
@@ -71,10 +71,10 @@ async def run_shell_command(command: str, is_background: bool = False, config: R
         sb = get_sandbox(config)
         
         if is_background:
-            cmd_handle = await sb.commands.run(command, background=True)
+            cmd_handle = await sb.run_command(command, background=True)
             return f"Command '{command}' started in background. PID: {cmd_handle.pid}"
         
-        exec_result = await sb.commands.run(command)
+        exec_result = await sb.run_command(command)
         
         output = []
         if exec_result.stdout:
@@ -99,7 +99,7 @@ async def list_files(path: str = ".", config: RunnableConfig = None) -> str:
     """List files in the directory."""
     try:
         sb = get_sandbox(config)
-        files = await sb.files.list(path)
+        files = await sb.list_files(path)
         return "\n".join([f"{f.name} ({f.type})" for f in files])
     except Exception as e:
         return f"Error: {str(e)}"
@@ -109,7 +109,7 @@ async def read_file(path: str, config: RunnableConfig) -> str:
     """Read a file as text."""
     try:
         sb = get_sandbox(config)
-        return await sb.files.read(path)
+        return await sb.read_file(path)
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -118,7 +118,7 @@ async def write_file(path: str, content: str, config: RunnableConfig) -> str:
     """Write content to a file in the sandbox."""
     try:
         sb = get_sandbox(config)
-        await sb.files.write(path, content)
+        await sb.write_file(path, content)
         return f"File '{path}' written successfully."
     except Exception as e:
         return f"Error writing file: {str(e)}"
@@ -138,7 +138,7 @@ async def upload_local_file(local_path: str, remote_path: str = None, config: Ru
         with open(local_path, "rb") as f:
             file_data = f.read()
             
-        await sb.files.write(remote_path, file_data)
+        await sb.write_file(remote_path, file_data)
         return f"File uploaded successfully to sandbox at '{remote_path}'"
     except Exception as e:
         return f"Error uploading file: {str(e)}"
@@ -148,7 +148,7 @@ async def install_package(package_name: str, config: RunnableConfig) -> str:
     """Install a Python package using pip in the sandbox."""
     try:
         sb = get_sandbox(config)
-        exec_result = await sb.commands.run(f"pip install {package_name}")
+        exec_result = await sb.run_command(f"pip install {package_name}")
         
         output = []
         if exec_result.stdout:
@@ -177,7 +177,7 @@ async def read_binary_file(path: str, config: RunnableConfig) -> str:
     try:
         sb = get_sandbox(config)
         # E2B read usually returns str or bytes depending on usage, usually bytes for binary
-        file_bytes = await sb.files.read(path, format="bytes")
+        file_bytes = await sb.read_file(path, format="bytes")
         return base64.b64encode(file_bytes).decode('utf-8')
     except Exception as e:
         return f"Error reading binary file: {str(e)}"
@@ -200,7 +200,7 @@ async def download_file_to_host(remote_path: str, local_filename: str = None, co
             
         local_path = os.path.join(download_dir, local_filename)
         
-        file_bytes = await sb.files.read(remote_path, format="bytes")
+        file_bytes = await sb.read_file(remote_path, format="bytes")
         
         with open(local_path, "wb") as f:
             f.write(file_bytes)
@@ -214,14 +214,14 @@ async def visualize_file(path: str, config: RunnableConfig) -> str:
     """Expose a file via a public URL for visualization."""
     try:
         sb = get_sandbox(config)
-        STATIC_SERVER_PORT = 8000
+        STATIC_SERVER_PORT = 8080
         
         # Start server if not running (simple check by trying to start it)
         # We run in background. We add a small delay to ensure it binds.
-        await sb.commands.run(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
+        await sb.run_command(f"python3 -m http.server {STATIC_SERVER_PORT}", background=True)
         await asyncio.sleep(2) # Wait for server to bind
             
-        host = sb.get_host(STATIC_SERVER_PORT)
+        host = await sb.get_host(STATIC_SERVER_PORT)
         
         # Resolve path relative to CWD using python inside sandbox
         # This handles absolute paths correctly by making them relative to CWD if possible
@@ -236,8 +236,8 @@ try:
     
     # Determine Server Root. 
     # http.server runs in the shell's default CWD.
-    # We assume this matches the user's HOME directory.
-    server_root = os.environ.get('HOME', '/home/user')
+    # We use os.getcwd() which generally matches the shell's CWD in both E2B and OpenSandbox.
+    server_root = os.getcwd()
     
     # Check if file exists
     if not os.path.exists(abs_path):
@@ -274,7 +274,15 @@ except Exception as e:
             
         # Use the resolved relative path
         relative_path = output_line if output_line else path.lstrip('/')
-        url = f"https://{host}/{relative_path}"
+        
+        # Determine protocol (HTTP for local OpenSandbox, HTTPS for E2B)
+        is_local = host.startswith("localhost") or host.startswith("127.0.0.1")
+        protocol = "http" if is_local else "https"
+        
+        if is_local:
+            host = host.replace("127.0.0.1", "localhost")
+            
+        url = f"{protocol}://{host}/{relative_path}"
         
         ext = path.split('.')[-1].lower() if '.' in path else 'txt'
         mime = "text/plain"
@@ -307,8 +315,17 @@ async def get_public_url(port: int, config: RunnableConfig) -> str:
     
     # Generate URL (E2B host generation is usually static/instant)
     try:
-        host = sb.get_host(port)
-        url = f"https://{host}"
+        host = await sb.get_host(port)
+        # Determine protocol (HTTP for local OpenSandbox, HTTPS for E2B)
+        is_local = host.startswith("localhost") or host.startswith("127.0.0.1")
+        protocol = "http" if is_local else "https"
+        
+        if is_local:
+            host = host.replace("127.0.0.1", "localhost")
+            
+        url = f"{protocol}://{host}"
+        if not url.endswith("/"):
+            url += "/"
     except Exception as e:
         return f"Error getting host: {str(e)}"
 
