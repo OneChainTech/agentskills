@@ -1,0 +1,330 @@
+{
+	"nodes": [
+		{
+			"id": "user_ui",
+			"x": -600,
+			"y": -100,
+			"width": 300,
+			"height": 550,
+			"type": "group",
+			"label": "Frontend (Browser / Web UI)",
+			"color": "5"
+		},
+		{
+			"id": "ui_upload",
+			"x": -580,
+			"y": -60,
+			"width": 260,
+			"height": 100,
+			"type": "text",
+			"text": "### 1. Upload Zone\n- PDF/Image Input\n- Drag & Drop\n- **Action**: User uploads file",
+			"color": "5"
+		},
+		{
+			"id": "ui_chat",
+			"x": -580,
+			"y": 300,
+			"width": 260,
+			"height": 120,
+			"type": "text",
+			"text": "### 3. Chat Interface\n- Q&A Interaction\n- **State**: Maintains `chatHistory`\n- **Action**: Sends Query + History",
+			"color": "5"
+		},
+		{
+			"id": "ui_visual",
+			"x": -580,
+			"y": 60,
+			"width": 260,
+			"height": 220,
+			"type": "text",
+			"text": "### 2. Analysis Dashboard\n- **Visual Tab**: Image + Color Boxes\n  - **Red**: Tables\n  - **Purple**: Diagrams/Figures\n  - **Blue**: Text Blocks\n- **Markdown Tab**: Digital Text",
+			"color": "5"
+		},
+		{
+			"id": "backend_api",
+			"x": -100,
+			"y": -100,
+			"width": 300,
+			"height": 550,
+			"type": "group",
+			"label": "Backend (FastAPI)",
+			"color": "4"
+		},
+		{
+			"id": "api_endpoints",
+			"x": -80,
+			"y": -60,
+			"width": 260,
+			"height": 480,
+			"type": "text",
+			"text": "## server.py\n\n**Core Endpoints:**\n- `POST /upload`: Ingestion & OCR\n- `POST /query`: RAG retrieval & QA\n- `GET /`: Serve UI\n\n**Orchestration:**\n- Save Upload\n- PDF to Image Conversion\n- VLM Analysis\n- In-Memory Indexing",
+			"color": "4"
+		},
+		{
+			"id": "processing_engine",
+			"x": 300,
+			"y": -250,
+			"width": 400,
+			"height": 300,
+			"type": "group",
+			"label": "Document Processing Pipeline",
+			"color": "3"
+		},
+		{
+			"id": "pdf_handler",
+			"x": 320,
+			"y": -210,
+			"width": 160,
+			"height": 120,
+			"type": "text",
+			"text": "**PDF Handler**\n(`pypdfium2`)\n\n- Scale: 4x (300 DPI)\n- Action: Full-page rendering",
+			"color": "3"
+		},
+		{
+			"id": "ocr_engine",
+			"x": 500,
+			"y": -210,
+			"width": 180,
+			"height": 240,
+			"type": "text",
+			"text": "**OCR Engine**\n(`engine/ocr.py`)\n\n- **VLM**: Qwen2-VL\n- **Detection**: \n  - Table Coordinates\n  - Figure Coordinates\n  - Text Coordinates\n- **Transcription**: Full Markdown",
+			"color": "3"
+		},
+		{
+			"id": "rag_system",
+			"x": 300,
+			"y": 100,
+			"width": 400,
+			"height": 550,
+			"type": "group",
+			"label": "Advanced Multi-turn RAG",
+			"color": "6"
+		},
+		{
+			"id": "rewriter",
+			"x": 320,
+			"y": 140,
+			"width": 160,
+			"height": 100,
+			"type": "text",
+			"text": "**Query Rewriter**\n\n- Input: Query + History\n- Action: LLM Condense\n- Output: Standalone Query",
+			"color": "6"
+		},
+		{
+			"id": "indexing",
+			"x": 500,
+			"y": 140,
+			"width": 180,
+			"height": 100,
+			"type": "text",
+			"text": "**Indexing**\n- Vector: ChromaDB\n- Keyword: BM25",
+			"color": "6"
+		},
+		{
+			"id": "retriever",
+			"x": 500,
+			"y": 260,
+			"width": 180,
+			"height": 120,
+			"type": "text",
+			"text": "**Stage 1: Ensemble**\n- Strategy: Hybrid Retrieval\n- Action: Fetch top 10 candidates",
+			"color": "6"
+		},
+		{
+			"id": "reranker_node",
+			"x": 320,
+			"y": 400,
+			"width": 360,
+			"height": 120,
+			"type": "text",
+			"text": "### Stage 2: Reranking\n- **Model**: `bge-reranker-v2-m3`\n- **Action**: Cross-Encoder Re-order\n- **Output**: Top 3 Contexts",
+			"color": "6"
+		},
+		{
+			"id": "external_services",
+			"x": 800,
+			"y": -50,
+			"width": 240,
+			"height": 450,
+			"type": "group",
+			"label": "SiliconFlow AI Services",
+			"color": "1"
+		},
+		{
+			"id": "llm_api",
+			"x": 820,
+			"y": -10,
+			"width": 200,
+			"height": 400,
+			"type": "text",
+			"text": "## Model API\n\n**1. Vision (VLM)**\n   - Full Element Grounding\n   - Markdown Transcription\n\n**2. Rerank API**\n   - Cross-Encoder scoring\n\n**3. Inference (LLM)**\n   - Query Rewriting\n   - Logic Reasoning\n   - Grounded Response",
+			"color": "1"
+		},
+		{
+			"id": "file_system",
+			"x": -100,
+			"y": 500,
+			"width": 300,
+			"height": 100,
+			"type": "file",
+			"file": "ocr/data/images",
+			"color": "2"
+		}
+	],
+	"edges": [
+		{
+			"id": "e1",
+			"fromNode": "ui_upload",
+			"fromSide": "right",
+			"toNode": "api_endpoints",
+			"toSide": "left",
+			"label": "1. POST /upload",
+			"color": "4"
+		},
+		{
+			"id": "e2",
+			"fromNode": "api_endpoints",
+			"fromSide": "bottom",
+			"toNode": "file_system",
+			"toSide": "top",
+			"label": "2. Save Assets"
+		},
+		{
+			"id": "e3",
+			"fromNode": "api_endpoints",
+			"fromSide": "right",
+			"toNode": "pdf_handler",
+			"toSide": "left",
+			"label": "3. Trigger"
+		},
+		{
+			"id": "e4",
+			"fromNode": "pdf_handler",
+			"fromSide": "right",
+			"toNode": "ocr_engine",
+			"toSide": "left",
+			"label": "4. Images"
+		},
+		{
+			"id": "e5",
+			"fromNode": "ocr_engine",
+			"fromSide": "right",
+			"toNode": "llm_api",
+			"toSide": "left",
+			"label": "5. VLM Request",
+			"color": "1"
+		},
+		{
+			"id": "e6",
+			"fromNode": "llm_api",
+			"fromSide": "left",
+			"toNode": "ocr_engine",
+			"toSide": "right",
+			"label": "6. Result JSON",
+			"color": "1"
+		},
+		{
+			"id": "e7",
+			"fromNode": "ocr_engine",
+			"fromSide": "bottom",
+			"toNode": "indexing",
+			"toSide": "top",
+			"label": "7. Digital Data"
+		},
+		{
+			"id": "e8",
+			"fromNode": "ocr_engine",
+			"fromSide": "left",
+			"toNode": "api_endpoints",
+			"toSide": "right",
+			"label": "8. Status OK",
+			"color": "3"
+		},
+		{
+			"id": "e9",
+			"fromNode": "api_endpoints",
+			"fromSide": "left",
+			"toNode": "ui_visual",
+			"toSide": "right",
+			"label": "9. Render Boxes",
+			"color": "5"
+		},
+		{
+			"id": "e10",
+			"fromNode": "ui_chat",
+			"fromSide": "right",
+			"toNode": "api_endpoints",
+			"toSide": "left",
+			"label": "10. Query + History",
+			"color": "5"
+		},
+		{
+			"id": "e11",
+			"fromNode": "api_endpoints",
+			"fromSide": "bottom",
+			"toNode": "rewriter",
+			"toSide": "top",
+			"label": "11. Process",
+			"color": "6"
+		},
+		{
+			"id": "e12",
+			"fromNode": "rewriter",
+			"fromSide": "right",
+			"toNode": "llm_api",
+			"toSide": "left",
+			"label": "12. Rewrite (LLM)"
+		},
+		{
+			"id": "e13",
+			"fromNode": "rewriter",
+			"fromSide": "right",
+			"toNode": "retriever",
+			"toSide": "left",
+			"label": "13. Standalone Query"
+		},
+		{
+			"id": "e14",
+			"fromNode": "retriever",
+			"fromSide": "bottom",
+			"toNode": "reranker_node",
+			"toSide": "top",
+			"label": "14. Top 10 Docs"
+		},
+		{
+			"id": "e15",
+			"fromNode": "reranker_node",
+			"fromSide": "right",
+			"toNode": "llm_api",
+			"toSide": "left",
+			"label": "15. Score Request",
+			"color": "1"
+		},
+		{
+			"id": "e16",
+			"fromNode": "llm_api",
+			"fromSide": "left",
+			"toNode": "reranker_node",
+			"toSide": "right",
+			"label": "16. Ranked List",
+			"color": "1"
+		},
+		{
+			"id": "e17",
+			"fromNode": "reranker_node",
+			"fromSide": "left",
+			"toNode": "api_endpoints",
+			"toSide": "right",
+			"label": "17. Final Context + Gen"
+		},
+		{
+			"id": "e18",
+			"fromNode": "api_endpoints",
+			"fromSide": "left",
+			"toNode": "ui_chat",
+			"toSide": "right",
+			"label": "18. Answer",
+			"color": "5"
+		}
+	]
+}
