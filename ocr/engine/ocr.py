@@ -85,8 +85,6 @@ class OCREngine:
         try:
             result = self._call_vlm_api(payload)
             full_text = result['choices'][0]['message']['content']
-            # print(f"[Debug] Raw VLM Output: {full_text[:300]}...") # Debug log
-
             
             # 坐标提取解析：匹配任何字母构成的类型标签
             boxes = []

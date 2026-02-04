@@ -13,19 +13,19 @@ An advanced document analysis system that transforms raw PDFs/Images into struct
     *   **Context-Aware**: Supports multi-turn conversation with automatic query rewriting to handle follow-up questions (e.g., "Where is it?").
     *   **Stage 1 (Hybrid Retrieval)**: Combines Dense Vector (ChromaDB) and Sparse Keyword (BM25) search.
     *   **Stage 2 (Reranking)**: Employs `BAAI/bge-reranker-v2-m3` to re-order candidates, ensuring the most relevant context is passed to the LLM.
-*   **Interactive Neural Lab UI**: A developer-focused web interface for document ingestion, real-time visual telemetry, and contextual Q&A.
+*   **Interactive Neural Lab UI**: A developer-focused web interface for document ingestion, real-time visual telemetry, and contextual Q&A. Includes robust error handling and status feedback.
 *   **Memory-First Indexing**: Uses ephemeral in-memory vector stores for fast, session-based document interaction.
 
 ## 🏗 System Architecture
 
 The system operates in four main stages:
-1.  **Ingestion**: PDF conversion to high-res images.
+1.  **Ingestion**: PDF conversion to high-res images using `pypdfium2`.
 2.  **Cognitive Processing**: VLM-based OCR extraction (Markdown + Full-element Bounding Boxes).
 3.  **Indexing**: Hybrid Dense/Sparse vectorization with Ephemeral ChromaDB.
 4.  **Synthesis**: 
-    *   Query Rewriting (LLM)
-    *   Two-stage retrieval (Hybrid + Rerank)
-    *   Context-injected Generation
+    *   **Query Rewriting**: LLM-based reformulation of user queries based on conversation history.
+    *   **Two-stage Retrieval**: Ensemble (Vector+Keyword) followed by Cross-Encoder Reranking.
+    *   **Generation**: Context-injected answer generation.
 
 *(See `architecture.canvas` for a visual diagram)*
 
@@ -66,6 +66,7 @@ The system operates in four main stages:
     DEEPSEEK_BASE_URL=https://api.siliconflow.cn/v1
     OCR_MODEL_ID=Qwen/Qwen3-VL-32B-Instruct
     BASE_MODEL_ID=Pro/zai-org/GLM-4.7
+    EMBEDDING_MODEL_ID=BAAI/bge-m3
     ```
 
 ### Running the System

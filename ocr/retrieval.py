@@ -7,7 +7,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
-from langchain.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from langchain.schema import Document
 

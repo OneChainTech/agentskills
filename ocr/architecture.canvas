@@ -87,7 +87,7 @@
 			"width": 180,
 			"height": 240,
 			"type": "text",
-			"text": "**OCR Engine**\n(`engine/ocr.py`)\n\n- **VLM**: Qwen2-VL\n- **Detection**: \n  - Table Coordinates\n  - Figure Coordinates\n  - Text Coordinates\n- **Transcription**: Full Markdown",
+			"text": "**OCR Engine**\n(`engine/ocr.py`)\n\n- **VLM**: Qwen3-VL\n- **Detection**: \n  - Table Coordinates\n  - Figure Coordinates\n  - Text Coordinates\n- **Transcription**: Full Markdown",
 			"color": "3"
 		},
 		{
