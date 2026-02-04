@@ -253,6 +253,7 @@
                     data.pages.forEach(page => {
                         const pageDiv = document.createElement('div');
                         pageDiv.className = 'space-y-3';
+                        pageDiv.id = `page-container-${page.page_num}`; // Add ID for scrolling
                         let boxesHtml = (page.boxes || []).map(box => `
                             <div class="ocr-box" data-label="${box.type}" style="left:${box.x}%; top:${box.y}%; width:${box.w}%; height:${box.h}%;"></div>
                         `).join('');
@@ -306,6 +307,17 @@
             }
         }
 
+        function scrollToPage(pageNum) {
+            switchTab('visual');
+            const el = document.getElementById(`page-container-${pageNum}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Highlight effect
+                el.classList.add('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-offset-zinc-900');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-offset-zinc-900'), 2000);
+            }
+        }
+
         function addMessage(role, text, id = null) {
             const div = document.createElement('div');
             div.className = `flex gap-6 animate-fade-in ${role === 'user' ? 'flex-row-reverse' : ''}`;
@@ -332,8 +344,25 @@
             if (sources && sources.length > 0) {
                 html += `<div class="mt-6 pt-4 border-t border-zinc-800">
                     <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Grounding Evidence</p>
-                    ${sources.map(src => `<div class="bg-black/40 p-3 rounded-lg text-[10px] font-mono text-zinc-400 border-l-2 border-rose-600 mb-2 whitespace-pre-wrap italic">"${src}"</div>`).join('')}
-                </div>`;
+                    <div class="flex flex-wrap gap-2">`;
+                
+                sources.forEach(src => {
+                    // Handle both old string format (if cached) and new object format
+                    const page = src.page || '?';
+                    const score = typeof src.score === 'number' ? src.score.toFixed(2) : 'N/A';
+                    const text = src.preview || src;
+                    
+                    html += `
+                        <button onclick="scrollToPage(${page})" class="group flex flex-col text-left bg-black/40 hover:bg-rose-500/10 border border-zinc-800 hover:border-rose-500/50 p-2 rounded-lg transition-all max-w-full">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[9px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">PAGE ${page}</span>
+                                <span class="text-[9px] text-zinc-500">Score: ${score}</span>
+                            </div>
+                            <span class="text-[10px] font-mono text-zinc-400 group-hover:text-zinc-300 line-clamp-2 w-full">"${text}"</span>
+                        </button>`;
+                });
+                
+                html += `</div></div>`;
             }
             textElem.innerHTML = html;
             lucide.createIcons();

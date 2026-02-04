@@ -208,12 +208,20 @@ class PDFRetriever:
                 "chat_history": chat_history_str
             })
             
-            # Format sources
+            # Format sources with page numbers
             sources = []
+            seen_pages = set()
             for doc in final_docs:
-                score_info = f" (Score: {doc.metadata.get('relevance_score', 'N/A')})"
-                preview = doc.page_content[:150].replace('\n', ' ') + "..." + score_info
-                sources.append(preview)
+                page_num = doc.metadata.get("page", 1)
+                score = doc.metadata.get('relevance_score', 'N/A')
+                preview = doc.page_content[:100].replace('\n', ' ') + "..."
+                
+                # Deduplicate same page references if needed, but here we keep fragments
+                sources.append({
+                    "page": page_num,
+                    "preview": preview,
+                    "score": score
+                })
 
             return {
                 "answer": response["output_text"],
