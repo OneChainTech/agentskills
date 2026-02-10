@@ -10,9 +10,10 @@ An advanced document analysis system that transforms raw PDFs/Images into struct
     *   **Figure (Purple)**: Identification of diagrams, flowcharts, and architectural maps.
     *   **Text (Blue)**: Highlighting of key semantic text blocks.
 *   **Advanced Multi-turn RAG Architecture**: 
-    *   **Context-Aware**: Supports multi-turn conversation with automatic query rewriting to handle follow-up questions (e.g., "Where is it?").
-    *   **Stage 1 (Hybrid Retrieval)**: Combines Dense Vector (ChromaDB) and Sparse Keyword (BM25) search.
-    *   **Stage 2 (Reranking)**: Employs `BAAI/bge-reranker-v2-m3` to re-order candidates, ensuring the most relevant context is passed to the LLM.
+    *   **RAG-Fusion Strategy**: Automatically generates 4 multi-view query variations to broaden search scope and eliminate blind spots.
+    *   **Reciprocal Rank Fusion (RRF)**: Merges results from parallel retrievals (Vector + Keyword) using weighted rank fusion for robust candidate selection.
+    *   **Stage 1 (Hybrid Retrieval)**: Ensemble search (ChromaDB + BM25) executed in parallel for all query variations.
+    *   **Stage 2 (Reranking)**: Employs `BAAI/bge-reranker-v2-m3` to re-order the top 20 fused candidates.
 *   **Interactive Neural Lab UI**: A developer-focused web interface for document ingestion, real-time visual telemetry, and contextual Q&A. Includes robust error handling and status feedback.
 *   **Memory-First Indexing**: Uses ephemeral in-memory vector stores for fast, session-based document interaction.
 
@@ -23,8 +24,9 @@ The system operates in four main stages:
 2.  **Cognitive Processing**: VLM-based OCR extraction (Markdown + Full-element Bounding Boxes).
 3.  **Indexing**: Hybrid Dense/Sparse vectorization with Ephemeral ChromaDB.
 4.  **Synthesis**: 
-    *   **Query Rewriting**: LLM-based reformulation of user queries based on conversation history.
-    *   **Two-stage Retrieval**: Ensemble (Vector+Keyword) followed by Cross-Encoder Reranking.
+    *   **Multi-Query Generation**: LLM-based query expansion (1 Original + 4 Variations).
+    *   **RAG-Fusion**: Parallel Hybrid Retrieval followed by Reciprocal Rank Fusion (RRF).
+    *   **Reranking**: Cross-Encoder scoring of the best fused candidates.
     *   **Generation**: Context-injected answer generation.
 
 *(See `architecture.canvas` for a visual diagram)*

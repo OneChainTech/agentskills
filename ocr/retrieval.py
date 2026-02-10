@@ -8,6 +8,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from langchain.schema import Document
 
 load_dotenv()
@@ -128,6 +129,49 @@ class PDFRetriever:
             print(f"[-] Ingest Error: {e}")
             raise e
 
+    def generate_multi_queries(self, question: str):
+        """
+        RAG-Fusion: Generate multiple query variations
+        """
+        prompt = PromptTemplate(
+            input_variables=["question"],
+            template="""你是一个智能助手。请针对以下问题生成 4 个不同角度的搜索查询，用于在文档中检索相关信息。
+请直接输出 4 行查询，每行一个，不要包含序号或额外解释。
+原问题：{question}"""
+        )
+        chain = prompt | self.llm | StrOutputParser()
+        
+        try:
+            print(f"[*] Generating multi-view queries for RAG-Fusion...")
+            res = chain.invoke({"question": question})
+            queries = [q.strip() for q in res.split('\n') if q.strip()]
+            return queries[:4]
+        except Exception as e:
+            print(f"[-] Multi-query generation failed: {e}")
+            return []
+
+    def reciprocal_rank_fusion(self, results: list[list[Document]], k=60):
+        """
+        RAG-Fusion: RRF Algorithm
+        """
+        fused_scores = {}
+        doc_map = {}
+        
+        for docs in results:
+            for rank, doc in enumerate(docs):
+                # Use page content as unique key
+                doc_str = doc.page_content
+                if doc_str not in doc_map:
+                    doc_map[doc_str] = doc
+                
+                if doc_str not in fused_scores:
+                    fused_scores[doc_str] = 0
+                
+                fused_scores[doc_str] += 1 / (rank + k)
+        
+        reranked_results = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+        return [doc_map[content] for content, score in reranked_results]
+
     def query(self, question: str, history: list[dict] = []):
         if not self.ensemble_retriever:
             return {"answer": "系统尚未加载文档，请先上传。", "sources": []}
@@ -163,9 +207,26 @@ class PDFRetriever:
             except Exception as e:
                 print(f"[-] Query Rewrite Error: {e}, using original question.")
 
-        # 2. First Pass: Hybrid Retrieval (Get top 10)
+        # 2. RAG-Fusion: Multi-Query Retrieval + RRF
         try:
-            initial_docs = self.ensemble_retriever.invoke(search_query)
+            # 2.1 Generate queries
+            generated_queries = self.generate_multi_queries(search_query)
+            all_queries = [search_query] + generated_queries
+            print(f"[+] RAG-Fusion Queries: {all_queries}")
+
+            # 2.2 Parallel Retrieval
+            all_results = []
+            for q in all_queries:
+                docs = self.ensemble_retriever.invoke(q)
+                all_results.append(docs)
+            
+            # 2.3 RRF Fusion
+            initial_docs = self.reciprocal_rank_fusion(all_results)
+            print(f"[+] RRF Fused {len(initial_docs)} documents from {len(all_queries)} queries.")
+            
+            # Keep top 20 for reranking
+            initial_docs = initial_docs[:20]
+
         except Exception as e:
             print(f"[-] Retrieval Error: {e}")
             return {"answer": f"检索出错: {str(e)}", "sources": []}

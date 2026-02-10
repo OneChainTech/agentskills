@@ -107,12 +107,12 @@
 			"width": 160,
 			"height": 100,
 			"type": "text",
-			"text": "**Query Rewriter**\n\n- Input: Query + History\n- Action: LLM Condense\n- Output: Standalone Query",
+			"text": "**Multi-Query Gen**\n\n- Input: Context Query\n- Action: Generate 4 Variations\n- Output: 5 Queries",
 			"color": "6"
 		},
 		{
 			"id": "indexing",
-			"x": 500,
+			"x": 800,
 			"y": 140,
 			"width": 180,
 			"height": 100,
@@ -122,19 +122,29 @@
 		},
 		{
 			"id": "retriever",
-			"x": 500,
-			"y": 260,
-			"width": 180,
-			"height": 120,
+			"x": 520,
+			"y": 140,
+			"width": 240,
+			"height": 100,
 			"type": "text",
-			"text": "**Stage 1: Ensemble**\n- Strategy: Hybrid Retrieval\n- Action: Fetch top 10 candidates",
+			"text": "**Parallel Hybrid Retrieval**\n- Input: 5 Queries\n- Action: Parallel Search\n- Output: 5 x Top K Docs",
+			"color": "6"
+		},
+		{
+			"id": "rrf_node",
+			"x": 520,
+			"y": 280,
+			"width": 240,
+			"height": 100,
+			"type": "text",
+			"text": "**RRF Fusion**\n- Algo: Reciprocal Rank Fusion\n- Action: Merge & Score\n- Output: Top 20 Candidates",
 			"color": "6"
 		},
 		{
 			"id": "reranker_node",
 			"x": 320,
 			"y": 400,
-			"width": 360,
+			"width": 440,
 			"height": 120,
 			"type": "text",
 			"text": "### Stage 2: Reranking\n- **Model**: `bge-reranker-v2-m3`\n- **Action**: Cross-Encoder Re-order\n- **Output**: Top 3 Contexts",
@@ -273,7 +283,7 @@
 			"fromSide": "right",
 			"toNode": "llm_api",
 			"toSide": "left",
-			"label": "12. Rewrite (LLM)"
+			"label": "12. Multi-Query (LLM)"
 		},
 		{
 			"id": "e13",
@@ -281,15 +291,23 @@
 			"fromSide": "right",
 			"toNode": "retriever",
 			"toSide": "left",
-			"label": "13. Standalone Query"
+			"label": "13. 5 Queries"
 		},
 		{
 			"id": "e14",
 			"fromNode": "retriever",
 			"fromSide": "bottom",
+			"toNode": "rrf_node",
+			"toSide": "top",
+			"label": "14. Result Sets"
+		},
+		{
+			"id": "e19",
+			"fromNode": "rrf_node",
+			"fromSide": "bottom",
 			"toNode": "reranker_node",
 			"toSide": "top",
-			"label": "14. Top 10 Docs"
+			"label": "15. Fused List"
 		},
 		{
 			"id": "e15",
@@ -297,7 +315,7 @@
 			"fromSide": "right",
 			"toNode": "llm_api",
 			"toSide": "left",
-			"label": "15. Score Request",
+			"label": "16. Score Request",
 			"color": "1"
 		},
 		{
@@ -306,7 +324,7 @@
 			"fromSide": "left",
 			"toNode": "reranker_node",
 			"toSide": "right",
-			"label": "16. Ranked List",
+			"label": "17. Ranked List",
 			"color": "1"
 		},
 		{
@@ -315,7 +333,7 @@
 			"fromSide": "left",
 			"toNode": "api_endpoints",
 			"toSide": "right",
-			"label": "17. Final Context + Gen"
+			"label": "18. Final Context + Gen"
 		},
 		{
 			"id": "e18",
@@ -323,7 +341,7 @@
 			"fromSide": "left",
 			"toNode": "ui_chat",
 			"toSide": "right",
-			"label": "18. Answer",
+			"label": "19. Answer",
 			"color": "5"
 		}
 	]
