@@ -47,12 +47,47 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "downloads")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
+SKILLS_DIR = os.path.join(os.path.dirname(__file__), "skills")
+
+def _parse_skill_frontmatter(content: str) -> dict:
+    meta = {}
+    if not content.startswith("---"):
+        return meta
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return meta
+    frontmatter = parts[1]
+    lines = frontmatter.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if ":" not in line:
+            i += 1
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key not in ("name", "description"):
+            i += 1
+            continue
+        if key == "description" and value in ("|", ">"):
+            block = []
+            i += 1
+            while i < len(lines) and (lines[i].startswith("  ") or lines[i].startswith("\t")):
+                block.append(lines[i].lstrip())
+                i += 1
+            meta[key] = " ".join([b.strip() for b in block if b.strip()]).strip()
+            continue
+        meta[key] = value
+        i += 1
+    return meta
+
 class TaskRequest(BaseModel):
     task: Optional[str] = None
     files: Optional[List[str]] = []
     thread_id: Optional[str] = None
     mode: Optional[Literal["single", "multi"]] = "single"
-    max_iterations: Optional[int] = 3
+    max_iterations: Optional[int] = 60
     sandbox_provider: Optional[Literal["e2b", "opensandbox"]] = "e2b"
 
 @app.post("/api/upload")
@@ -96,7 +131,8 @@ async def run_task(request: TaskRequest):
             async for event in agent.run(
                 prompt,
                 thread_id=request.thread_id,
-                sandbox_provider=request.sandbox_provider
+                sandbox_provider=request.sandbox_provider,
+                max_iterations=request.max_iterations
             ):
                 yield json.dumps(event) + "\n"
                 # Small delay to ensure UI updates smoothly if events come too fast
@@ -105,6 +141,26 @@ async def run_task(request: TaskRequest):
             yield json.dumps({"type": "error", "message": f"Server Error: {str(e)}"}) + "\n"
 
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+@app.get("/api/skills")
+def list_skills():
+    skills = []
+    if os.path.isdir(SKILLS_DIR):
+        for name in sorted(os.listdir(SKILLS_DIR)):
+            skill_path = os.path.join(SKILLS_DIR, name, "SKILL.md")
+            if not os.path.isfile(skill_path):
+                continue
+            try:
+                with open(skill_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                meta = _parse_skill_frontmatter(content)
+                skills.append({
+                    "name": meta.get("name", name),
+                    "description": meta.get("description", "")
+                })
+            except Exception:
+                continue
+    return JSONResponse({"skills": skills})
 
 
 # Serve static files (the web interface)

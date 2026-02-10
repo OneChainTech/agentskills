@@ -222,9 +222,9 @@
                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
                     Quick Start
                 </label>
-                <div class="grid grid-cols-1 gap-2">
+                <div class="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                     <!-- Type 1: Data Analysis -->
-                    <button onclick="setTask('生成一份包含 [日期, 地区, 产品类别, 销售额, 利润] 的模拟电商数据（100条），使用 Plotly 绘制一个交互式的柱状图（Bar Chart）展示各地区和类别的销售占比，并保存为 HTML 报告。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
+                    <button onclick="setTask('请使用 visualization-expert 技能：生成一份包含 [日期, 地区, 产品类别, 销售额, 利润] 的电商数据（10条）。1) 先选择多张合适图表；2) 用 Plotly 绘制相应图表展示各地区销售占比；3) 利用数据和图表生成 HTML 报告并展示。')" class="snap-start min-w-[240px] text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700">
                         <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
@@ -237,7 +237,7 @@
                     </button>
 
                     <!-- Type 4: Upload Analysis -->
-                    <button onclick="setTask('请读取我上传的数据文件（CSV/Excel），分析数据的基本统计信息（行数、列名、缺失值），并针对数值列绘制分布直方图。最后，请遵循 UI/UX Pro Max 规范生成一份专业的 HTML 可视化报告，并调用可视化工具展示。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
+                    <button onclick="setTask('请读取我上传的数据文件（CSV/Excel），分析数据的基本统计信息（行数、列名、缺失值），并针对数值列绘制分布直方图。最后，请遵循 UI/UX Pro Max 规范生成一份专业的 HTML 可视化报告，并调用可视化工具展示。')" class="snap-start min-w-[240px] text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -250,7 +250,7 @@
                     </button>
 
                     <!-- Type 5: Sandbox Tools SDK Showcase -->
-                    <button onclick="setTask('请展示沙箱工具SDK的综合使用：1) 使用 write_file 创建一个 Python 脚本文件（包含数据处理逻辑）；2) 使用 run_code 执行该脚本生成数据；3) 使用 list_files 查看生成的文件；4) 使用 read_file 读取结果文件；5) 使用 visualize_file 可视化生成的数据文件；6) 最后使用 download_file_to_host 将结果文件下载到本地。请在每个步骤中明确说明使用了哪个工具。')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-700">
+                    <button onclick="setTask('请展示沙箱工具SDK的综合使用：1) 使用 write_file 创建一个 Python 脚本文件（包含数据处理逻辑）；2) 使用 run_code 执行该脚本生成数据；3) 使用 list_files 查看生成的文件；4) 使用 read_file 读取结果文件；5) 使用 visualize_file 可视化生成的数据文件；6) 最后使用 download_file_to_host 将结果文件下载到本地。请在每个步骤中明确说明使用了哪个工具。')" class="snap-start min-w-[240px] text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-green-300 dark:hover:border-green-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -263,13 +263,13 @@
                     </button>
 
                     <!-- Section Divider -->
-                    <div class="my-2 border-t border-slate-200 dark:border-white/10"></div>
+                    <div class="my-2 border-t border-slate-200 dark:border-white/10 w-full"></div>
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
                         Advanced Agents
                     </label>
 
                     <!-- Type 6: Multi-Agent Collaboration -->
-                    <button onclick="setTask(MULTI_AGENT_PROMPT, 'multi')" class="text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-700">
+                    <button onclick="setTask(MULTI_AGENT_PROMPT, 'multi')" class="snap-start min-w-[240px] text-left px-4 py-3 bg-white dark:bg-slate-800/50 hover:bg-cyan-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg transition-all group shadow-sm hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-700">
                          <div class="flex items-center gap-3">
                             <span class="p-1.5 rounded-md bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -281,6 +281,17 @@
                         </div>
                     </button>
                 </div>
+            </div>
+
+            <!-- Skills List -->
+            <div class="space-y-3">
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                    Skills
+                </label>
+                <div id="skillsPanel" class="grid grid-cols-2 gap-3">
+                    <!-- Skills will be injected here -->
+                </div>
+                <div id="skillsEmpty" class="text-[10px] text-slate-400 dark:text-slate-500 hidden">No skills detected.</div>
             </div>
                 </div>
             </div>
@@ -397,6 +408,8 @@
         const workflowContainer = document.getElementById('workflowContainer');
         const fileInput = document.getElementById('fileInput');
         const fileChips = document.getElementById('fileChips');
+        const skillsPanel = document.getElementById('skillsPanel');
+        const skillsEmpty = document.getElementById('skillsEmpty');
         let uploadedFiles = []; // Stores absolute paths
         let activeUploads = 0;
         let currentMode = 'single'; // 'single' | 'multi'
@@ -418,6 +431,50 @@
         };
 
         const MULTI_AGENT_PROMPT = `创建一个 Gradio Hello World 单页面应用。要求：1. 包含文本输入和提交按钮；2. 输入名字返回 "Hello, {名字}!"；3. 使用 Interface API；4. 文件名 app.py；5. 安装 gradio==3.50.2；6. 设置 server_name="0.0.0.0"、share=False、enable_queue=False；7. 运行后调用 get_public_url(port=7860) 展示链接。`;
+
+        async function loadSkills() {
+            try {
+                const response = await fetch('/api/skills');
+                const data = await response.json();
+                const skills = data.skills || [];
+
+                if (!skills.length) {
+                    skillsEmpty.classList.remove('hidden');
+                    return;
+                }
+
+                skillsPanel.innerHTML = '';
+                for (const skill of skills) {
+                    const card = document.createElement('div');
+                    const name = skill.name || 'unknown';
+                    const desc = skill.description || 'No description';
+                    card.className = 'group relative overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl shadow-sm hover:shadow-md transition-all duration-300';
+                    card.innerHTML = `
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-50/70 via-white/40 to-slate-50/30 dark:from-slate-900/40 dark:via-slate-900/20 dark:to-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="relative p-4 flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 15l4-4 3 3 5-6" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-bold tracking-wider uppercase text-slate-700 dark:text-slate-200">${name}</div>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-0 left-0 h-0.5 w-full bg-gradient-to-r from-transparent via-blue-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="absolute z-30 hidden group-hover:block -top-2 left-1/2 -translate-x-1/2 -translate-y-full max-w-[260px] px-3 py-2 rounded-xl text-[10px] font-medium bg-slate-900 text-white shadow-xl">
+                            <div class="font-semibold">${name}</div>
+                            <div class="opacity-80 mt-1 leading-relaxed">${desc}</div>
+                        </div>
+                    `;
+                    card.title = `${name}\n${desc}`;
+                    skillsPanel.appendChild(card);
+                }
+            } catch (e) {
+                skillsEmpty.classList.remove('hidden');
+            }
+        }
 
         function updateRunButtonState() {
             if (activeUploads > 0) {
@@ -497,6 +554,7 @@
             }
         }
         initTheme();
+        loadSkills();
 
         themeToggle.addEventListener('click', () => {
             if (document.documentElement.classList.contains('dark')) {
@@ -972,7 +1030,7 @@
                         files: threadId ? [] : uploadedFiles, // Only send files on new task
                         thread_id: threadId,
                         mode: mode,
-                        max_iterations: mode === 'multi' ? 5 : 3,
+                        max_iterations: mode === 'multi' ? 60 : 60,
                         sandbox_provider: sandboxProvider
                     })
                 });

@@ -22,7 +22,7 @@ from sandbox_adapter_opensandbox import OpenSandboxAdapter
 from tools import TOOLS, write_file, read_file, list_files
 
 # System Prompt
-SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM)** 中的全栈编程智能体。你的目标是利用 Python 代码和系统命令，自主、高效地解决用户提出的任何技术问题。
+BASE_SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM)** 中的全栈编程智能体。你的目标是利用 Python 代码和系统命令，自主、高效地解决用户提出的任何技术问题。
 
 **环境能力:**
 *   **OS**: Linux (Debian/Ubuntu based).
@@ -134,8 +134,99 @@ SYSTEM_PROMPT = """你是一个运行在 **E2B 安全沙箱 (Firecracker MicroVM
             - 确保端口7860没有被占用：先执行 `kill -9 $(lsof -t -i:7860) 2>/dev/null || true`        *   **端口**: 默认端口通常为 `7860`。
         *   **访问**: 运行后必须调用 `get_public_url(port=7860)`。
 
-请始终使用**中文**与用户交流，保持专业、简洁且乐于助人。
+**停止条件（必须遵守）:**
+当已完成以下内容时，必须立即停止继续思考与重复自检：
+1. 关键产物已生成（代码/图表/HTML/文件）
+2. 已完成可视化或下载的交付动作（`visualize_file` / `get_public_url` / `download_file_to_host`）
+3. 已用简明中文总结结果与下一步（若有）
+完成以上三项后，不得继续循环或反复规划。
+
+**一次性执行策略（强制优先）:**
+对于“生成数据→绘图→导出 HTML→展示”这类可串联任务，必须优先在一次 `run_code` 或一次脚本执行中完成，避免多轮工具调用与反思。
+
+请始终使用**中文**与用户交流。任何输出（包括标题、列表、代码注释、工具说明、占位文本）都必须是中文；不得使用英文或中英混合（专有名词除外）。若用户使用英文提问，也必须用中文作答。
 """
+
+def _parse_skill_frontmatter(content: str) -> Dict[str, str]:
+    """Parse simple YAML frontmatter for name/description."""
+    meta: Dict[str, str] = {}
+    if not content.startswith("---"):
+        return meta
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return meta
+    frontmatter = parts[1]
+    for line in frontmatter.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key in ("name", "description"):
+            meta[key] = value
+    return meta
+
+def _strip_frontmatter(content: str) -> str:
+    if not content.startswith("---"):
+        return content
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        return content
+    return parts[2].lstrip()
+
+def _list_skill_names() -> List[str]:
+    skills_dir = os.path.join(os.path.dirname(__file__), "skills")
+    if not os.path.isdir(skills_dir):
+        return []
+    names = []
+    for name in sorted(os.listdir(skills_dir)):
+        if os.path.isfile(os.path.join(skills_dir, name, "SKILL.md")):
+            names.append(name)
+    return names
+
+def _skills_to_system_prompt(skill_names: List[str]) -> str:
+    if not skill_names:
+        return ""
+    lines = [
+        "",
+        "",
+        "# 可用技能",
+        "当用户明确提到技能名（例如 `visualization-expert`）时，必须加载该技能指引并严格遵循。",
+        "技能列表：",
+    ]
+    lines.extend([f"- {name}" for name in skill_names])
+    return "\n".join(lines)
+
+SKILL_NAMES = _list_skill_names()
+SYSTEM_PROMPT = BASE_SYSTEM_PROMPT + _skills_to_system_prompt(SKILL_NAMES)
+
+def _load_skill_body(skill_name: str) -> str:
+    skills_dir = os.path.join(os.path.dirname(__file__), "skills")
+    skill_path = os.path.join(skills_dir, skill_name, "SKILL.md")
+    if not os.path.isfile(skill_path):
+        return ""
+    try:
+        with open(skill_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return _strip_frontmatter(content).strip()
+    except Exception:
+        return ""
+
+def _inject_skill_instructions(task: str) -> str:
+    if not task or not SKILL_NAMES:
+        return task
+    matched = [name for name in SKILL_NAMES if name in task]
+    if not matched:
+        return task
+    blocks = ["请严格遵循以下技能指引，作为本次任务的最高优先级："]
+    for name in matched:
+        body = _load_skill_body(name)
+        if not body:
+            continue
+        blocks.append(f"## Skill: {name}\n{body}")
+    blocks.append("任务：")
+    blocks.append(task)
+    return "\n\n".join(blocks)
 
 # --- Multi-Agent Prompts ---
 
@@ -173,7 +264,7 @@ CODE_WRITER_PROMPT = """你是一个专业的代码编写智能体。你的职�
 - read_file: 读取文件内容
 - list_files: 列出目录中的文件
 
-请始终使用中文回复，保持专业和高效。
+请始终使用中文回复，保持专业和高效。所有解释、注释与说明必须是中文（专有名词除外）。
 """
 
 CODE_REVIEWER_PROMPT = """你是一个专业的代码审查智能体。你的职责是：
@@ -201,7 +292,7 @@ CODE_REVIEWER_PROMPT = """你是一个专业的代码审查智能体。你的职
 3. 仔细分析代码质量和功能完整性
 4. 列出具体的问题和改进建议
 
-请始终使用中文回复，保持专业和建设性。
+请始终使用中文回复，保持专业和建设性。所有问题描述与建议必须是中文（专有名词除外）。
 """
 
 class ManusAgent:
@@ -220,7 +311,7 @@ class ManusAgent:
                 model=self.model_id,
                 streaming=True,
                 max_retries=20,
-                timeout=300
+                timeout=900
             )
             
         self.tools = TOOLS
@@ -274,6 +365,7 @@ class ManusAgent:
         task: str = None,
         thread_id: str = None,
         sandbox_provider: Literal["e2b", "opensandbox"] = "e2b",
+        max_iterations: int = 30,
         **kwargs
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
@@ -284,10 +376,10 @@ class ManusAgent:
             thread_id: Thread ID for resumption
             sandbox_provider: "e2b" or "opensandbox"
         """
-        async for event in self._run_loop(task, thread_id, sandbox_provider):
+        async for event in self._run_loop(task, thread_id, sandbox_provider, max_iterations):
             yield event
 
-    async def _run_loop(self, task: str = None, thread_id: str = None, sandbox_provider: str = "e2b") -> AsyncGenerator[Dict[str, Any], None]:
+    async def _run_loop(self, task: str = None, thread_id: str = None, sandbox_provider: str = "e2b", max_iterations: int = 30) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Executes the agent loop.
         If thread_id is provided, it resumes that thread.
@@ -333,34 +425,29 @@ class ManusAgent:
             
             yield {"type": "system", "message": f"Using DeepAgents multi-agent framework with {sandbox_provider}."}
                 
-            # Config with sandbox
+            # Config with sandbox (limit steps to avoid excessive turns)
+            if max_iterations is None:
+                safe_max = 60
+            else:
+                try:
+                    safe_max = max(10, min(120, int(max_iterations)))
+                except Exception:
+                    safe_max = 60
             config = {
                 "configurable": {
                     "thread_id": thread_id,
                     "sandbox": self.sandbox
                 },
-                "recursion_limit": 100
+                "recursion_limit": safe_max
             }
 
-            # Initialize turn count for this execution session
-            # We track turns within the current task execution, not across all history
-            state = self.graph.get_state(config)
-
-            # If this is a new task (has task parameter), reset turn counter
-            # If resuming (no task parameter), continue from where we left off
-            if task:
-                # New task: start from turn 0
-                current_turn = 0
-            else:
-                # Resuming: count turns in current execution by looking at recent messages
-                # Count how many AI responses have been generated in this execution
-                existing_messages = state.values.get("messages", [])
-                # Count AI messages (which represent completed turns)
-                current_turn = len([m for m in existing_messages if hasattr(m, 'type') and m.type == 'ai'])
+            # Initialize turn count for this execution session (monotonic in this run)
+            current_turn = 0
             
             # Input format
             inputs = None
             if task:
+                task = _inject_skill_instructions(task)
                 inputs = {"messages": [HumanMessage(content=task)]}
             else:
                 # Resuming - we need to approve ALL pending tool calls
@@ -384,7 +471,8 @@ class ManusAgent:
                     # Get agent name from metadata
                     metadata = event.get("metadata", {})
                     agent_name = metadata.get("langgraph_node", "Agent")
-                    
+                    if "SummarizationMiddleware" in agent_name:
+                        continue
                     current_turn += 1
                     # Match frontend regex: Thinking (Turn \d+)
                     yield {"type": "status", "message": f"Thinking (Turn {current_turn}) [{agent_name}]..."}

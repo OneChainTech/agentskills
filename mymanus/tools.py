@@ -148,7 +148,9 @@ async def install_package(package_name: str, config: RunnableConfig) -> str:
     """Install a Python package using pip in the sandbox."""
     try:
         sb = get_sandbox(config)
-        exec_result = await sb.run_command(f"pip install {package_name}")
+        # Upgrade pip first to avoid old resolver/metadata issues
+        await sb.run_command("python -m pip install -U pip")
+        exec_result = await sb.run_command(f"python -m pip install {package_name}")
         
         output = []
         if exec_result.stdout:
