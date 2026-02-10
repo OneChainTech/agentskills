@@ -453,11 +453,30 @@ class ManusAgent:
                 # Resuming - we need to approve ALL pending tool calls
                 # Get the state to find out how many tool calls are pending
                 current_state = self.graph.get_state(config)
-                last_message = current_state.values.get("messages", [])[-1] if current_state.values.get("messages") else None
+                messages = current_state.values.get("messages", []) or []
                 
-                num_calls = 1 # Default
-                if last_message and hasattr(last_message, "tool_calls"):
-                     num_calls = len(last_message.tool_calls) or 1
+                # Find the latest AI message with tool calls
+                tool_call_msg_index = None
+                tool_call_ids = []
+                for idx in range(len(messages) - 1, -1, -1):
+                    msg = messages[idx]
+                    if hasattr(msg, "tool_calls") and msg.tool_calls:
+                        tool_call_msg_index = idx
+                        for tc in msg.tool_calls:
+                            tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                            if tc_id:
+                                tool_call_ids.append(tc_id)
+                        break
+                
+                pending_ids = set(tool_call_ids)
+                if tool_call_msg_index is not None and pending_ids:
+                    for msg in messages[tool_call_msg_index + 1:]:
+                        if isinstance(msg, ToolMessage):
+                            tc_id = getattr(msg, "tool_call_id", None)
+                            if tc_id in pending_ids:
+                                pending_ids.remove(tc_id)
+                
+                num_calls = len(pending_ids) if pending_ids else 1
                 
                 # Create a decision for each pending tool call
                 decisions = [{"type": "approve"} for _ in range(num_calls)]
