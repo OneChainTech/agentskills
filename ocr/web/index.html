@@ -163,32 +163,37 @@
                 <div id="params-content" class="hidden grid grid-cols-2 gap-3 transition-all duration-300">
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Chunk Size</label>
-                        <input id="cfg-chunk-size" type="number" value="1000" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                        <input id="cfg-chunk-size" type="number" value="800" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Overlap</label>
-                        <input id="cfg-chunk-overlap" type="number" value="120" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                        <input id="cfg-chunk-overlap" type="number" value="100" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max/Page</label>
-                        <input id="cfg-max-chunks-per-page" type="number" value="10" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                        <input id="cfg-max-chunks-per-page" type="number" value="8" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
                     </div>
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total Limit</label>
-                        <input id="cfg-max-total-chunks" type="number" value="80" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                        <input id="cfg-max-total-chunks" type="number" value="60" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
                     </div>
                 </div>
             </div>
 
             <!-- History List -->
             <div class="space-y-4">
-                <div class="flex items-center gap-2 px-1">
-                    <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">历史记录</h3>
+                <div id="history-toggle" class="flex items-center justify-between px-1 cursor-pointer group/history">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">历史记录</h3>
+                    </div>
+                    <i id="history-chevron" data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover/history:text-blue-500 transition-all"></i>
                 </div>
-                <div id="history-list" class="space-y-2 max-h-60 overflow-y-auto">
-                    <!-- History items will be injected here -->
-                    <p class="text-[10px] text-slate-400 text-center py-4 italic">暂无历史记录</p>
+                <div id="history-list-container" class="hidden transition-all duration-300">
+                    <div id="history-list" class="space-y-2 max-h-60 overflow-y-auto">
+                        <!-- History items will be injected here -->
+                        <p class="text-[10px] text-slate-400 text-center py-4 italic">暂无历史记录</p>
+                    </div>
                 </div>
             </div>
             
@@ -249,6 +254,22 @@
         <!-- Input Area -->
         <div class="p-6 lg:p-10">
             <div class="max-w-3xl mx-auto">
+                <!-- Suggested Questions -->
+                <div id="suggestions-container" class="hidden mb-4">
+                    <div class="flex items-center gap-2 mb-2 px-1">
+                        <i data-lucide="sparkles" class="w-3 h-3 text-amber-500"></i>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">推荐问题</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="quickQuery('基于生物特征要素的认证方式？')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">基于生物特征要素的认证方式？</button>
+                        <button onclick="quickQuery('经典信道的步骤')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">经典信道的步骤</button>
+                        <button onclick="quickQuery('合约查询的经典信道指标？')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">合约查询的经典信道指标？</button>
+                        <button onclick="quickQuery('量子信道的作用')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">量子信道的作用</button>
+                        <button onclick="quickQuery('影像前端系统服务器部署在哪里')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">影像前端系统服务器部署在哪里</button>
+                        <button onclick="quickQuery('认证中心服务端执行了哪些操作')" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm">认证中心服务端执行了哪些操作</button>
+                    </div>
+                </div>
+
                 <div class="relative group">
                     <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-10 group-focus-within:opacity-20 transition duration-1000"></div>
                     <div class="relative bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 p-2 flex items-center focus-within:border-blue-400 transition-all">
@@ -283,11 +304,21 @@
         const markdownViewer = document.getElementById('markdown-viewer');
         const currentDocName = document.getElementById('current-doc-name');
         const docStatus = document.getElementById('doc-status');
+        const suggestionsContainer = document.getElementById('suggestions-container');
         const cfgChunkSize = document.getElementById('cfg-chunk-size');
         const cfgChunkOverlap = document.getElementById('cfg-chunk-overlap');
         const cfgMaxChunksPerPage = document.getElementById('cfg-max-chunks-per-page');
         const cfgMaxTotalChunks = document.getElementById('cfg-max-total-chunks');
         const historyList = document.getElementById('history-list');
+        const historyToggle = document.getElementById('history-toggle');
+        const historyListContainer = document.getElementById('history-list-container');
+        const historyChevron = document.getElementById('history-chevron');
+
+        historyToggle.onclick = () => {
+            historyListContainer.classList.toggle('hidden');
+            historyChevron.classList.toggle('rotate-90');
+        };
+
         const paramsToggle = document.getElementById('params-toggle');
         const paramsContent = document.getElementById('params-content');
         const paramsChevron = document.getElementById('params-chevron');
@@ -391,6 +422,7 @@
 
         function renderDocument(data) {
             queryInput.disabled = false; sendBtn.disabled = false;
+            suggestionsContainer.classList.remove('hidden');
             currentDocName.textContent = data.filename;
             docStatus.className = "w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]";
             chatMessages.innerHTML = '';
@@ -537,6 +569,11 @@
             }
         }
 
+        async function quickQuery(text) {
+            queryInput.value = text;
+            sendQuery();
+        }
+
         async function sendQuery() {
             const q = queryInput.value.trim();
             if (!q) return;
@@ -604,13 +641,21 @@
         function updateLastMessage(answer, sources = [], id) {
             const container = document.getElementById(id);
             const textElem = container.querySelector('.msg-text');
-            latestSources = sources || [];
+            
+            // 过滤掉置信度小于 0.5 的来源
+            const filteredSources = (sources || []).filter(src => {
+                const score = parseFloat(src.score || 0);
+                return score >= 0.1;
+            });
+            
+            latestSources = filteredSources;
             let html = `<div class="font-medium text-slate-800 leading-relaxed">${answer}</div>`;
-            if (sources && sources.length > 0) {
+            
+            if (filteredSources.length > 0) {
                 html += `<div class="mt-4 pt-4 border-t border-slate-100">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">参考来源（按置信度排序）</p>
                     <div class="flex flex-wrap gap-3 overflow-x-auto pb-2 pt-3">`;
-                sources.forEach((src, idx) => {
+                filteredSources.forEach((src, idx) => {
                     const page = src.page || '?';
                     const preview = src.preview || '';
                     const isTop = idx === 0;

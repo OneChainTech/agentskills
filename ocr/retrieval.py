@@ -16,6 +16,20 @@ from langchain.schema import Document
 
 load_dotenv()
 
+# 优化：预编译正则表达式以提升性能
+TAG_PATTERN = re.compile(
+    r"(<\|ref\|>.*?<\|/ref\|>\s*<\|det\|>.*?<\|/det\|>)",
+    re.DOTALL
+)
+GROUNDING_PATTERN = re.compile(
+    r"<\|det\|>\s*\[\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]\]\s*<\|/det\|>",
+    re.DOTALL
+)
+CLEAN_PATTERN = re.compile(
+    r"<\|ref\|>|<\|/ref\|>|<\|det\|>\[\[.*?\]\]<\|/det\|>",
+    re.DOTALL
+)
+
 class SiliconFlowReranker:
     """
     Simple wrapper for SiliconFlow/BAAI Rerank API
@@ -83,7 +97,9 @@ class PDFRetriever:
         self.embeddings = OpenAIEmbeddings(
             api_key=os.getenv("DEEPSEEK_API_KEY"),
             base_url=os.getenv("DEEPSEEK_BASE_URL"),
-            model=os.getenv("EMBEDDING_MODEL_ID", "BAAI/bge-m3")
+            model=os.getenv("EMBEDDING_MODEL_ID", "BAAI/bge-m3"),
+            chunk_size=100,  # 优化：批量处理 embedding 请求
+            max_retries=2    # 优化：减少重试次数以加速失败场景
         )
         
         self.llm = ChatOpenAI(
@@ -156,13 +172,10 @@ class PDFRetriever:
         """
         按 grounding 标签对的边界切分文本，确保不在 <|ref|>...<|/ref|><|det|>...<|/det|> 内部断开。
         将文本拆分为独立的标签对片段，然后按 chunk_size 合并相邻片段。
+        优化：使用预编译的正则表达式
         """
         # 将文本分割为 [标签对, 间隙文本, 标签对, ...] 的序列
-        tag_pattern = re.compile(
-            r"(<\|ref\|>.*?<\|/ref\|>\s*<\|det\|>.*?<\|/det\|>)",
-            re.DOTALL
-        )
-        parts = tag_pattern.split(text)
+        parts = TAG_PATTERN.split(text)
         # parts 是交替的 [间隙, 标签对, 间隙, 标签对, ...] 序列
         parts = [p for p in parts if p.strip()]
 
@@ -230,10 +243,11 @@ class PDFRetriever:
             return []
 
         # 核心优化：识别带坐标标签的原子块，避免坐标标签与正文分离
+        # 优化：使用预编译的正则表达式
         if "<|ref|>" in text and "<|det|>" in text:
             # 匹配模式：<|ref|>...<|/ref|><|det|>...<|/det|> 或者 模型可能输出的变体
             # 这里使用贪婪匹配逻辑来切割独立的逻辑块
-            blocks = re.findall(r"(<\|ref\|>.*?<\|/ref\|>\s*<\|det\|>.*?<\|/det\|>)", text, re.DOTALL)
+            blocks = TAG_PATTERN.findall(text)
             if not blocks:
                 # 如果没找到标准 ref/det，尝试按换行符初步切分
                 blocks = [b.strip() for b in text.split("\n\n") if b.strip()]
@@ -276,8 +290,8 @@ class PDFRetriever:
         deduped = []
         seen = set()
         for chunk in chunks:
-            # 清理后检查长度
-            clean = re.sub(r"<\|ref\|>|<\|/ref\|>|<\|det\|>\[\[.*?\]\]<\|/det\|>", "", chunk, flags=re.DOTALL).strip()
+            # 清理后检查长度 - 优化：使用预编译的正则表达式
+            clean = CLEAN_PATTERN.sub("", chunk).strip()
             normalized = " ".join(clean.split())
             if len(normalized) < min_chunk_chars:
                 continue
@@ -290,7 +304,8 @@ class PDFRetriever:
 
     def _infer_chunk_type(self, chunk: str) -> str:
         # 先清洗掉 grounded 标签再判断类型，增加准确性
-        text = re.sub(r"<\|ref\|>|<\|/ref\|>|<\|det\|>\[\[.*?\]\]<\|/det\|>", "", chunk, flags=re.DOTALL).strip()
+        # 优化：使用预编译的正则表达式
+        text = CLEAN_PATTERN.sub("", chunk).strip()
         lowered = text.lower()
         if self._is_table_block(text):
             return "表格"
@@ -349,10 +364,8 @@ class PDFRetriever:
 
                 for idx, chunk in enumerate(chunks):
                     # 1. 提取 chunk 中所有交织的坐标标签，计算联合 bbox
-                    all_groundings = re.findall(
-                        r"<\|det\|>\s*\[\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]\]\s*<\|/det\|>",
-                        chunk, re.DOTALL
-                    )
+                    # 优化：使用预编译的正则表达式
+                    all_groundings = GROUNDING_PATTERN.findall(chunk)
 
                     bbox = None
                     if all_groundings:
@@ -372,7 +385,8 @@ class PDFRetriever:
                             bbox = None
 
                     # 无论是否找到 bbox，都必须清洗 chunk，移除所有 grounding 标签
-                    clean_chunk = re.sub(r"<\|ref\|>|<\|/ref\|>|<\|det\|>\[\[.*?\]\]<\|/det\|>", "", chunk, flags=re.DOTALL).strip()
+                    # 优化：使用预编译的正则表达式
+                    clean_chunk = CLEAN_PATTERN.sub("", chunk).strip()
 
                     if not bbox:
                         # 2. 增强型文本匹配：通过文本相似度在原始 Box 中寻找最接近的坐标

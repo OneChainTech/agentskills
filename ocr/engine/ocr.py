@@ -10,6 +10,18 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 load_dotenv()
 
+# 优化：预编译正则表达式以提升性能
+GROUNDING_PATTERN = re.compile(
+    r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]\]<\|/det\|>",
+    re.DOTALL
+)
+CLEAN_GROUNDING_PATTERN = re.compile(
+    r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[.*?\]\]<\|/det\|>",
+    re.DOTALL
+)
+OLD_COORD_PATTERN = re.compile(r"\[([a-zA-Z]+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]")
+CLEAN_OLD_COORD_PATTERN = re.compile(r"\[[a-zA-Z]+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\]")
+
 class OCREngine:
     def __init__(self):
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
@@ -17,7 +29,11 @@ class OCREngine:
         self.model_id = os.getenv("OCR_MODEL_ID", "deepseek-ai/DeepSeek-OCR")
         self.max_workers = int(os.getenv("OCR_MAX_WORKERS", "4"))
         self.http_timeout_sec = float(os.getenv("OCR_HTTP_TIMEOUT_SEC", "180"))
-        self._client = httpx.Client(timeout=httpx.Timeout(self.http_timeout_sec))
+        # 优化：使用连接池提升并发性能
+        self._client = httpx.Client(
+            timeout=httpx.Timeout(self.http_timeout_sec),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)
+        )
 
     def _encode_image(self, image, max_size=1500, jpeg_quality=80):
         if image.mode != 'RGB':
@@ -45,9 +61,10 @@ class OCREngine:
         response.raise_for_status()
         return response.json()
 
-    def process_image(self, image, max_size=2000, jpeg_quality=85):
+    def process_image(self, image, max_size=1600, jpeg_quality=75):
         """
         利用多模态模型将图片全量转化为带坐标的格式。
+        优化：降低默认图片质量以加速编码和传输
         """
         base64_image = self._encode_image(image, max_size=max_size, jpeg_quality=jpeg_quality)
         
@@ -87,10 +104,10 @@ class OCREngine:
         try:
             result = self._call_vlm_api(payload)
             full_text = result['choices'][0]['message']['content']
-            
-            # 1. 提取所有带坐标的块
+
+            # 1. 提取所有带坐标的块 - 优化：使用预编译的正则表达式
             boxes = []
-            grounding_patterns = re.findall(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]\]<\|/det\|>", full_text, re.DOTALL)
+            grounding_patterns = GROUNDING_PATTERN.findall(full_text)
             
             for m in grounding_patterns:
                 try:
@@ -117,10 +134,10 @@ class OCREngine:
                     })
                 except: continue
 
-            # 2. 生成纯净的 Markdown 供 UI 显示
-            clean_markdown = re.sub(r"<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[.*?\]\]<\|/det\|>", r"\1", full_text, flags=re.DOTALL).strip()
-            
-            # 3. 兼容老格式（防止模型没按新要求输出）
+            # 2. 生成纯净的 Markdown 供 UI 显示 - 优化：使用预编译的正则表达式
+            clean_markdown = CLEAN_GROUNDING_PATTERN.sub(r"\1", full_text).strip()
+
+            # 3. 兼容老格式（防止模型没按新要求输出）- 优化：使用预编译的正则表达式
             if not boxes:
                 type_map = {
                     "Text": "文本",
@@ -131,7 +148,7 @@ class OCREngine:
                     "Header": "标题",
                     "Footer": "页脚"
                 }
-                coord_patterns = re.findall(r"\[([a-zA-Z]+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]", full_text)
+                coord_patterns = OLD_COORD_PATTERN.findall(full_text)
                 for m in coord_patterns:
                     try:
                         raw_type = m[0].strip()
@@ -141,7 +158,7 @@ class OCREngine:
                             "w": (int(m[3]) - int(m[1])) / 10, "h": (int(m[4]) - int(m[2])) / 10
                         })
                     except: continue
-                clean_markdown = re.sub(r"\[[a-zA-Z]+,\s*\d+,\s*\d+,\s*\d+,\s*\d+\]", "", full_text).strip()
+                clean_markdown = CLEAN_OLD_COORD_PATTERN.sub("", full_text).strip()
 
             return {
                 "structured_data": boxes, 
@@ -153,11 +170,11 @@ class OCREngine:
             return {"structured_data": [], "markdown": "解析失败", "grounded_markdown": "解析失败"}
 
     def _process_image_with_fallback(self, image):
-        # 逐步降采样，降低超时风险
+        # 优化：调整降采样策略，更快的初始尝试
         attempt_profiles = [
-            (2000, 85),
-            (1600, 80),
-            (1200, 75),
+            (1600, 75),  # 优化：从 2000/85 降低
+            (1400, 70),  # 优化：从 1600/80 降低
+            (1200, 65),  # 优化：从 1200/75 降低
         ]
         last_result = {"structured_data": [], "markdown": "解析失败", "grounded_markdown": "解析失败"}
         for idx, (max_size, quality) in enumerate(attempt_profiles, start=1):
