@@ -1,348 +1,268 @@
 {
-	"nodes": [
-		{
-			"id": "user_ui",
-			"x": -600,
-			"y": -100,
-			"width": 300,
-			"height": 550,
-			"type": "group",
-			"label": "Frontend (Browser / Web UI)",
-			"color": "5"
-		},
-		{
-			"id": "ui_upload",
-			"x": -580,
-			"y": -60,
-			"width": 260,
-			"height": 100,
-			"type": "text",
-			"text": "### 1. Upload Zone\n- PDF/Image Input\n- Drag & Drop\n- **Action**: User uploads file",
-			"color": "5"
-		},
-		{
-			"id": "ui_chat",
-			"x": -580,
-			"y": 300,
-			"width": 260,
-			"height": 120,
-			"type": "text",
-			"text": "### 3. Chat Interface\n- Q&A Interaction\n- **State**: Maintains `chatHistory`\n- **Action**: Sends Query + History",
-			"color": "5"
-		},
-		{
-			"id": "ui_visual",
-			"x": -580,
-			"y": 60,
-			"width": 260,
-			"height": 220,
-			"type": "text",
-			"text": "### 2. Analysis Dashboard\n- **Visual Tab**: Image + Color Boxes\n  - **Red**: Tables\n  - **Purple**: Diagrams/Figures\n  - **Blue**: Text Blocks\n- **Markdown Tab**: Digital Text",
-			"color": "5"
-		},
-		{
-			"id": "backend_api",
-			"x": -100,
-			"y": -100,
-			"width": 300,
-			"height": 550,
-			"type": "group",
-			"label": "Backend (FastAPI)",
-			"color": "4"
-		},
-		{
-			"id": "api_endpoints",
-			"x": -80,
-			"y": -60,
-			"width": 260,
-			"height": 480,
-			"type": "text",
-			"text": "## server.py\n\n**Core Endpoints:**\n- `POST /upload`: Ingestion & OCR\n- `POST /query`: RAG retrieval & QA\n- `GET /`: Serve UI\n\n**Orchestration:**\n- Save Upload\n- PDF to Image Conversion\n- VLM Analysis\n- In-Memory Indexing",
-			"color": "4"
-		},
-		{
-			"id": "processing_engine",
-			"x": 300,
-			"y": -250,
-			"width": 400,
-			"height": 300,
-			"type": "group",
-			"label": "Document Processing Pipeline",
-			"color": "3"
-		},
-		{
-			"id": "pdf_handler",
-			"x": 320,
-			"y": -210,
-			"width": 160,
-			"height": 120,
-			"type": "text",
-			"text": "**PDF Handler**\n(`pypdfium2`)\n\n- Scale: 4x (300 DPI)\n- Action: Full-page rendering",
-			"color": "3"
-		},
-		{
-			"id": "ocr_engine",
-			"x": 500,
-			"y": -210,
-			"width": 180,
-			"height": 240,
-			"type": "text",
-			"text": "**OCR Engine**\n(`engine/ocr.py`)\n\n- **VLM**: Qwen3-VL\n- **Detection**: \n  - Table Coordinates\n  - Figure Coordinates\n  - Text Coordinates\n- **Transcription**: Full Markdown",
-			"color": "3"
-		},
-		{
-			"id": "rag_system",
-			"x": 300,
-			"y": 100,
-			"width": 400,
-			"height": 550,
-			"type": "group",
-			"label": "Advanced Multi-turn RAG",
-			"color": "6"
-		},
-		{
-			"id": "rewriter",
-			"x": 320,
-			"y": 140,
-			"width": 160,
-			"height": 100,
-			"type": "text",
-			"text": "**Multi-Query Gen**\n\n- Input: Context Query\n- Action: Generate 4 Variations\n- Output: 5 Queries",
-			"color": "6"
-		},
-		{
-			"id": "indexing",
-			"x": 800,
-			"y": 140,
-			"width": 180,
-			"height": 100,
-			"type": "text",
-			"text": "**Indexing**\n- Vector: ChromaDB\n- Keyword: BM25",
-			"color": "6"
-		},
-		{
-			"id": "retriever",
-			"x": 520,
-			"y": 140,
-			"width": 240,
-			"height": 100,
-			"type": "text",
-			"text": "**Parallel Hybrid Retrieval**\n- Input: 5 Queries\n- Action: Parallel Search\n- Output: 5 x Top K Docs",
-			"color": "6"
-		},
-		{
-			"id": "rrf_node",
-			"x": 520,
-			"y": 280,
-			"width": 240,
-			"height": 100,
-			"type": "text",
-			"text": "**RRF Fusion**\n- Algo: Reciprocal Rank Fusion\n- Action: Merge & Score\n- Output: Top 20 Candidates",
-			"color": "6"
-		},
-		{
-			"id": "reranker_node",
-			"x": 320,
-			"y": 400,
-			"width": 440,
-			"height": 120,
-			"type": "text",
-			"text": "### Stage 2: Reranking\n- **Model**: `bge-reranker-v2-m3`\n- **Action**: Cross-Encoder Re-order\n- **Output**: Top 3 Contexts",
-			"color": "6"
-		},
-		{
-			"id": "external_services",
-			"x": 800,
-			"y": -50,
-			"width": 240,
-			"height": 450,
-			"type": "group",
-			"label": "SiliconFlow AI Services",
-			"color": "1"
-		},
-		{
-			"id": "llm_api",
-			"x": 820,
-			"y": -10,
-			"width": 200,
-			"height": 400,
-			"type": "text",
-			"text": "## Model API\n\n**1. Vision (VLM)**\n   - Full Element Grounding\n   - Markdown Transcription\n\n**2. Rerank API**\n   - Cross-Encoder scoring\n\n**3. Inference (LLM)**\n   - Query Rewriting\n   - Logic Reasoning\n   - Grounded Response",
-			"color": "1"
-		},
-		{
-			"id": "file_system",
-			"x": -100,
-			"y": 500,
-			"width": 300,
-			"height": 100,
-			"type": "file",
-			"file": "ocr/data/images",
-			"color": "2"
-		}
-	],
-	"edges": [
-		{
-			"id": "e1",
-			"fromNode": "ui_upload",
-			"fromSide": "right",
-			"toNode": "api_endpoints",
-			"toSide": "left",
-			"label": "1. POST /upload",
-			"color": "4"
-		},
-		{
-			"id": "e2",
-			"fromNode": "api_endpoints",
-			"fromSide": "bottom",
-			"toNode": "file_system",
-			"toSide": "top",
-			"label": "2. Save Assets"
-		},
-		{
-			"id": "e3",
-			"fromNode": "api_endpoints",
-			"fromSide": "right",
-			"toNode": "pdf_handler",
-			"toSide": "left",
-			"label": "3. Trigger"
-		},
-		{
-			"id": "e4",
-			"fromNode": "pdf_handler",
-			"fromSide": "right",
-			"toNode": "ocr_engine",
-			"toSide": "left",
-			"label": "4. Images"
-		},
-		{
-			"id": "e5",
-			"fromNode": "ocr_engine",
-			"fromSide": "right",
-			"toNode": "llm_api",
-			"toSide": "left",
-			"label": "5. VLM Request",
-			"color": "1"
-		},
-		{
-			"id": "e6",
-			"fromNode": "llm_api",
-			"fromSide": "left",
-			"toNode": "ocr_engine",
-			"toSide": "right",
-			"label": "6. Result JSON",
-			"color": "1"
-		},
-		{
-			"id": "e7",
-			"fromNode": "ocr_engine",
-			"fromSide": "bottom",
-			"toNode": "indexing",
-			"toSide": "top",
-			"label": "7. Digital Data"
-		},
-		{
-			"id": "e8",
-			"fromNode": "ocr_engine",
-			"fromSide": "left",
-			"toNode": "api_endpoints",
-			"toSide": "right",
-			"label": "8. Status OK",
-			"color": "3"
-		},
-		{
-			"id": "e9",
-			"fromNode": "api_endpoints",
-			"fromSide": "left",
-			"toNode": "ui_visual",
-			"toSide": "right",
-			"label": "9. Render Boxes",
-			"color": "5"
-		},
-		{
-			"id": "e10",
-			"fromNode": "ui_chat",
-			"fromSide": "right",
-			"toNode": "api_endpoints",
-			"toSide": "left",
-			"label": "10. Query + History",
-			"color": "5"
-		},
-		{
-			"id": "e11",
-			"fromNode": "api_endpoints",
-			"fromSide": "bottom",
-			"toNode": "rewriter",
-			"toSide": "top",
-			"label": "11. Process",
-			"color": "6"
-		},
-		{
-			"id": "e12",
-			"fromNode": "rewriter",
-			"fromSide": "right",
-			"toNode": "llm_api",
-			"toSide": "left",
-			"label": "12. Multi-Query (LLM)"
-		},
-		{
-			"id": "e13",
-			"fromNode": "rewriter",
-			"fromSide": "right",
-			"toNode": "retriever",
-			"toSide": "left",
-			"label": "13. 5 Queries"
-		},
-		{
-			"id": "e14",
-			"fromNode": "retriever",
-			"fromSide": "bottom",
-			"toNode": "rrf_node",
-			"toSide": "top",
-			"label": "14. Result Sets"
-		},
-		{
-			"id": "e19",
-			"fromNode": "rrf_node",
-			"fromSide": "bottom",
-			"toNode": "reranker_node",
-			"toSide": "top",
-			"label": "15. Fused List"
-		},
-		{
-			"id": "e15",
-			"fromNode": "reranker_node",
-			"fromSide": "right",
-			"toNode": "llm_api",
-			"toSide": "left",
-			"label": "16. Score Request",
-			"color": "1"
-		},
-		{
-			"id": "e16",
-			"fromNode": "llm_api",
-			"fromSide": "left",
-			"toNode": "reranker_node",
-			"toSide": "right",
-			"label": "17. Ranked List",
-			"color": "1"
-		},
-		{
-			"id": "e17",
-			"fromNode": "reranker_node",
-			"fromSide": "left",
-			"toNode": "api_endpoints",
-			"toSide": "right",
-			"label": "18. Final Context + Gen"
-		},
-		{
-			"id": "e18",
-			"fromNode": "api_endpoints",
-			"fromSide": "left",
-			"toNode": "ui_chat",
-			"toSide": "right",
-			"label": "19. Answer",
-			"color": "5"
-		}
-	]
+  "nodes": [
+    {
+      "id": "ui_group",
+      "x": -640,
+      "y": -180,
+      "width": 320,
+      "height": 560,
+      "type": "group",
+      "label": "前端界面 (web/index.html)",
+      "color": "5"
+    },
+    {
+      "id": "ui_upload",
+      "x": -620,
+      "y": -140,
+      "width": 280,
+      "height": 130,
+      "type": "text",
+      "text": "### 上传与配置\n- 文件上传\n- chunk 参数配置\n- 进度展示（SSE）",
+      "color": "5"
+    },
+    {
+      "id": "ui_history",
+      "x": -620,
+      "y": 10,
+      "width": 280,
+      "height": 110,
+      "type": "text",
+      "text": "### 历史记录\n- 列表加载\n- 回放并重建索引\n- 删除记录",
+      "color": "5"
+    },
+    {
+      "id": "ui_chat",
+      "x": -620,
+      "y": 140,
+      "width": 280,
+      "height": 180,
+      "type": "text",
+      "text": "### 问答与溯源\n- 多轮对话\n- 来源页与 bbox 高亮\n- Markdown/可视化双视图",
+      "color": "5"
+    },
+    {
+      "id": "api_group",
+      "x": -180,
+      "y": -180,
+      "width": 360,
+      "height": 560,
+      "type": "group",
+      "label": "服务层 (server.py)",
+      "color": "4"
+    },
+    {
+      "id": "api_endpoints",
+      "x": -160,
+      "y": -140,
+      "width": 320,
+      "height": 500,
+      "type": "text",
+      "text": "## FastAPI Endpoints\n- POST /upload\n- GET /upload_status/{id}\n- GET /upload_events/{id}\n- POST /query\n- GET /history\n- POST /history/load\n- DELETE /history/{id}\n\n状态缓存：UPLOAD_STATUS / UPLOAD_EVENTS",
+      "color": "4"
+    },
+    {
+      "id": "ingest_group",
+      "x": 240,
+      "y": -220,
+      "width": 380,
+      "height": 280,
+      "type": "group",
+      "label": "解析流水线",
+      "color": "3"
+    },
+    {
+      "id": "pdf_node",
+      "x": 260,
+      "y": -180,
+      "width": 160,
+      "height": 90,
+      "type": "text",
+      "text": "pdf_handler.py\n- PDF -> PIL 图片\n- 可调 render scale",
+      "color": "3"
+    },
+    {
+      "id": "ocr_node",
+      "x": 440,
+      "y": -180,
+      "width": 160,
+      "height": 190,
+      "type": "text",
+      "text": "engine/ocr.py\n- 压缩与缩放\n- VLM OCR 调用\n- 失败重试与回退\n- 输出 markdown + boxes",
+      "color": "3"
+    },
+    {
+      "id": "rag_group",
+      "x": 240,
+      "y": 90,
+      "width": 500,
+      "height": 360,
+      "type": "group",
+      "label": "检索与生成 (retrieval.py)",
+      "color": "6"
+    },
+    {
+      "id": "index_node",
+      "x": 260,
+      "y": 130,
+      "width": 210,
+      "height": 120,
+      "type": "text",
+      "text": "索引构建\n- markdown 分块\n- Chroma(Ephemeral)\n- BM25",
+      "color": "6"
+    },
+    {
+      "id": "retrieve_node",
+      "x": 490,
+      "y": 130,
+      "width": 230,
+      "height": 120,
+      "type": "text",
+      "text": "召回与重排\n- Ensemble 检索\n- RRF 融合\n- 可选 SiliconFlow rerank",
+      "color": "6"
+    },
+    {
+      "id": "answer_node",
+      "x": 260,
+      "y": 270,
+      "width": 460,
+      "height": 150,
+      "type": "text",
+      "text": "答案生成\n- 基于最终上下文调用 LLM\n- 返回 answer + sources(page/bbox/image_url)",
+      "color": "6"
+    },
+    {
+      "id": "ext_group",
+      "x": 790,
+      "y": -130,
+      "width": 260,
+      "height": 300,
+      "type": "group",
+      "label": "外部模型服务",
+      "color": "1"
+    },
+    {
+      "id": "ext_text",
+      "x": 810,
+      "y": -90,
+      "width": 220,
+      "height": 220,
+      "type": "text",
+      "text": "DEEPSEEK_BASE_URL\n- OCR /chat/completions\n- Embedding\n- Chat LLM\n- Rerank API",
+      "color": "1"
+    },
+    {
+      "id": "data_node",
+      "x": -180,
+      "y": 410,
+      "width": 360,
+      "height": 90,
+      "type": "file",
+      "file": "ocr/data",
+      "color": "2"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "ui_upload",
+      "fromSide": "right",
+      "toNode": "api_endpoints",
+      "toSide": "left",
+      "label": "POST /upload",
+      "color": "4"
+    },
+    {
+      "id": "e2",
+      "fromNode": "ui_history",
+      "fromSide": "right",
+      "toNode": "api_endpoints",
+      "toSide": "left",
+      "label": "history API",
+      "color": "4"
+    },
+    {
+      "id": "e3",
+      "fromNode": "ui_chat",
+      "fromSide": "right",
+      "toNode": "api_endpoints",
+      "toSide": "left",
+      "label": "POST /query",
+      "color": "4"
+    },
+    {
+      "id": "e4",
+      "fromNode": "api_endpoints",
+      "fromSide": "bottom",
+      "toNode": "data_node",
+      "toSide": "top",
+      "label": "读写上传/历史/图片"
+    },
+    {
+      "id": "e5",
+      "fromNode": "api_endpoints",
+      "fromSide": "right",
+      "toNode": "pdf_node",
+      "toSide": "left",
+      "label": "PDF 渲染"
+    },
+    {
+      "id": "e6",
+      "fromNode": "pdf_node",
+      "fromSide": "right",
+      "toNode": "ocr_node",
+      "toSide": "left",
+      "label": "逐页图片"
+    },
+    {
+      "id": "e7",
+      "fromNode": "ocr_node",
+      "fromSide": "right",
+      "toNode": "ext_text",
+      "toSide": "left",
+      "label": "OCR 请求",
+      "color": "1"
+    },
+    {
+      "id": "e8",
+      "fromNode": "ocr_node",
+      "fromSide": "bottom",
+      "toNode": "index_node",
+      "toSide": "top",
+      "label": "grounded markdown"
+    },
+    {
+      "id": "e9",
+      "fromNode": "index_node",
+      "fromSide": "right",
+      "toNode": "retrieve_node",
+      "toSide": "left",
+      "label": "hybrid recall"
+    },
+    {
+      "id": "e10",
+      "fromNode": "retrieve_node",
+      "fromSide": "bottom",
+      "toNode": "answer_node",
+      "toSide": "top",
+      "label": "final docs"
+    },
+    {
+      "id": "e11",
+      "fromNode": "answer_node",
+      "fromSide": "right",
+      "toNode": "ext_text",
+      "toSide": "left",
+      "label": "LLM 生成",
+      "color": "1"
+    },
+    {
+      "id": "e12",
+      "fromNode": "api_endpoints",
+      "fromSide": "left",
+      "toNode": "ui_chat",
+      "toSide": "right",
+      "label": "answer + sources",
+      "color": "5"
+    }
+  ]
 }

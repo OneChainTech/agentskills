@@ -3,130 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Document Laboratory</title>
+    <title>NeuralDocs Lab - OCR Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #fafafa; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .lab-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; }
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --accent: #f97316;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
         
-        /* 核心：红色高精度标注框 */
-        .image-wrapper { position: relative; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #27272a; background: #000; }
-        .page-img { width: 100%; opacity: 0.85; filter: grayscale(10%); display: block; }
-        .ocr-box {
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        h1, h2, h3, .font-heading {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        }
+
+        .sidebar-item-active {
+            background-color: #eff6ff;
+            color: var(--primary);
+            border-right: 3px solid var(--primary);
+        }
+
+        /* Image & Bounding Boxes */
+        .image-wrapper { 
+            position: relative; 
+            width: 100%; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            border: 1px solid var(--border); 
+            background: #fff; 
+        }
+        .page-img { width: 100%; display: block; }
+        .source-overlay {
             position: absolute;
-            border: 2px solid #3f3f46; /* 默认灰色 */
-            background: rgba(63, 63, 70, 0.1);
-            border-radius: 2px;
-            pointer-events: auto;
+            inset: 0;
+            pointer-events: none;
             z-index: 10;
-            transition: all 0.2s;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
         }
-        
-        /* 针对不同类型的特定颜色 */
-        .ocr-box[data-label="Table"] {
-            border-color: #ef4444; /* Red */
-            background: rgba(239, 68, 68, 0.1);
-        }
-        .ocr-box[data-label="Table"]:hover {
-            background: rgba(239, 68, 68, 0.25);
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
-        }
-        .ocr-box[data-label="Table"]::after { background: #ef4444; }
-
-        .ocr-box[data-label="Figure"] {
-            border-color: #a855f7; /* Purple */
-            background: rgba(168, 85, 247, 0.1);
-        }
-        .ocr-box[data-label="Figure"]:hover {
-            background: rgba(168, 85, 247, 0.25);
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
-        }
-        .ocr-box[data-label="Figure"]::after { background: #a855f7; }
-
-        .ocr-box[data-label="Text"] {
-            border-color: #3b82f6; /* Blue */
-            background: rgba(59, 130, 246, 0.1);
-        }
-        .ocr-box[data-label="Text"]:hover {
-            background: rgba(59, 130, 246, 0.25);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
-        }
-        .ocr-box[data-label="Text"]::after { background: #3b82f6; }
-
-        .ocr-box:hover {
-            z-index: 20;
-        }
-        .ocr-box::after {
-            content: attr(data-label);
+        .source-hit-box {
             position: absolute;
-            top: -18px;
-            left: -2px;
-            color: white;
-            font-size: 9px;
-            font-weight: 900;
-            padding: 1px 5px;
-            text-transform: uppercase;
+            border: 2px solid var(--primary);
+            background: rgba(37, 99, 235, 0.1);
             border-radius: 2px;
+            z-index: 12;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+            animation: pulseBox 1.5s ease-in-out infinite;
+        }
+        @keyframes pulseBox {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.01); }
         }
 
-        .bubble-bot { background: #18181b; border: 1px solid #27272a; }
-        .bubble-user { background: #2563eb; }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        /* Chat bubbles */
+        .bubble-bot { 
+            background: white; 
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .bubble-user { 
+            background: var(--primary); 
+            color: white; 
+        }
+
+        .source-card {
+            background: white;
+            border: 1px solid var(--border);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .source-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .animate-slide-up {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #drop-zone {
+            transition: all 0.3s ease;
+        }
+        #drop-zone.dragover {
+            border-color: var(--primary);
+            background-color: #f0f7ff;
+        }
     </style>
 </head>
-<body class="h-full flex overflow-hidden">
+<body class="h-full flex flex-col lg:flex-row overflow-hidden">
 
-    <aside class="w-80 lg:w-[480px] border-r border-zinc-800 bg-zinc-950 flex flex-col shrink-0 z-20">
-        <div class="p-6 border-b border-zinc-800 flex items-center justify-between">
+    <!-- Sidebar -->
+    <aside class="w-full lg:w-[420px] h-full border-r border-slate-200 bg-white flex flex-col shrink-0 z-20 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-rose-600 rounded-lg flex items-center justify-center text-white shadow-[0_0_15px_rgba(225,29,72,0.4)]">
-                    <i data-lucide="binary" class="w-5 h-5"></i>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path d="M14 3v4a1 1 0 001 1h4" />
+                    </svg>
                 </div>
                 <div>
-                    <h1 class="text-sm font-bold tracking-widest uppercase text-white">Neural Lab</h1>
-                    <p class="text-[9px] text-zinc-500 font-bold uppercase tracking-tighter">Hybrid Hybrid-RAG v2.1</p>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900 leading-none">NeuralDocs</h1>
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mt-1">Intelligence Laboratory</p>
                 </div>
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-6 space-y-8">
-            <section id="drop-zone" class="border-2 border-dashed border-zinc-800 rounded-2xl p-8 text-center cursor-pointer hover:border-rose-500 hover:bg-rose-500/5 transition-all group">
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Upload Area -->
+            <section id="drop-zone" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 transition-all group">
                 <input type="file" id="file-input" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
-                <i data-lucide="database-backup" class="w-8 h-8 mx-auto mb-3 text-zinc-700 group-hover:text-rose-500 transition-colors"></i>
-                <p class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Ingest Document</p>
-            </section>
-            
-            <div id="upload-progress" class="hidden space-y-2">
-                <div class="flex justify-between text-[9px] font-bold text-rose-500 uppercase">
-                    <span class="flex items-center gap-2"><i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i> Neural Mapping...</span>
-                    <span id="progress-text">0%</span>
+                <div class="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="cloud-upload" class="w-6 h-6 text-slate-400 group-hover:text-blue-500 transition-colors"></i>
                 </div>
-                <div class="w-full bg-zinc-900 rounded-full h-1 overflow-hidden">
-                    <div id="progress-bar" class="bg-rose-600 h-full w-0 transition-all duration-500"></div>
+                <p class="text-sm font-semibold text-slate-700">点击或拖拽文件上传</p>
+                <p class="text-[11px] text-slate-400 mt-1">支持 PDF, PNG, JPG</p>
+            </section>
+
+            <!-- Parameters -->
+            <div class="space-y-4">
+                <div id="params-toggle" class="flex items-center justify-between px-1 cursor-pointer group/params">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="settings-2" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">解析参数</h3>
+                    </div>
+                    <i id="params-chevron" data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover/params:text-blue-500 transition-all"></i>
+                </div>
+                <div id="params-content" class="hidden grid grid-cols-2 gap-3 transition-all duration-300">
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Chunk Size</label>
+                        <input id="cfg-chunk-size" type="number" value="1000" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Overlap</label>
+                        <input id="cfg-chunk-overlap" type="number" value="120" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max/Page</label>
+                        <input id="cfg-max-chunks-per-page" type="number" value="10" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total Limit</label>
+                        <input id="cfg-max-total-chunks" type="number" value="80" class="w-full bg-transparent border-none text-sm font-semibold focus:ring-0 p-0 text-slate-700">
+                    </div>
                 </div>
             </div>
 
-            <section id="info-card" class="hidden flex flex-col h-full overflow-hidden animate-fade-in">
-                <!-- Tab Navigation -->
-                <div class="flex border-b border-zinc-800 mb-4 shrink-0">
-                    <button id="btn-tab-visual" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-rose-600 text-white transition-all">Visual</button>
-                    <button id="btn-tab-markdown" class="flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-all">Markdown</button>
+            <!-- History List -->
+            <div class="space-y-4">
+                <div class="flex items-center gap-2 px-1">
+                    <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">历史记录</h3>
+                </div>
+                <div id="history-list" class="space-y-2 max-h-60 overflow-y-auto">
+                    <!-- History items will be injected here -->
+                    <p class="text-[10px] text-slate-400 text-center py-4 italic">暂无历史记录</p>
+                </div>
+            </div>
+            
+            <!-- Progress -->
+            <div id="upload-progress" class="hidden space-y-3 animate-fade-in p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                <div class="flex justify-between items-center">
+                    <span class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i> 正在处理...
+                    </span>
+                    <span id="progress-text" class="text-[11px] font-bold text-blue-600">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-600 h-full w-0 transition-all duration-500 shadow-[0_0_8px_rgba(37,99,235,0.4)]"></div>
+                </div>
+                <div id="upload-step-log" class="max-h-24 overflow-y-auto text-[10px] font-mono text-slate-500 space-y-1"></div>
+            </div>
+
+            <!-- Analysis Section -->
+            <section id="info-card" class="hidden flex flex-col h-full overflow-hidden animate-slide-up">
+                <div class="flex bg-slate-100 p-1 rounded-lg mb-4 shrink-0">
+                    <button id="btn-tab-visual" class="flex-1 py-2 text-xs font-bold rounded-md bg-white text-slate-900 shadow-sm transition-all">可视化</button>
+                    <button id="btn-tab-markdown" class="flex-1 py-2 text-xs font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">Markdown</button>
                 </div>
                 
-                <!-- Tab Panels -->
-                <div class="flex-1 overflow-y-auto pr-2 space-y-6">
-                    <div id="panel-visual" class="space-y-4">
-                        <div id="visual-preview-list" class="space-y-10 pb-10"></div>
+                <div class="flex-1 overflow-y-auto pr-1">
+                    <div id="panel-visual" class="space-y-6 pb-10">
+                        <div id="visual-preview-list" class="space-y-8"></div>
                     </div>
 
-                    <div id="panel-markdown" class="hidden space-y-3">
-                        <div class="lab-card p-4">
-                            <pre id="markdown-viewer" class="font-mono text-[10px] text-emerald-500/80 max-h-none overflow-y-visible whitespace-pre-wrap"></pre>
+                    <div id="panel-markdown" class="hidden">
+                        <div class="bg-slate-900 rounded-xl p-4 overflow-hidden">
+                            <pre id="markdown-viewer" class="font-mono text-[11px] text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed"></pre>
                         </div>
                     </div>
                 </div>
@@ -134,32 +228,40 @@
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col bg-zinc-900">
-        <header class="h-16 flex items-center px-10 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-xl z-10">
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full bg-slate-50/50">
+        <header class="h-16 flex items-center px-6 border-b border-slate-200 bg-white/80 backdrop-blur-md z-10">
             <div class="flex items-center gap-3">
-                <div id="doc-status" class="w-1.5 h-1.5 bg-zinc-700 rounded-full"></div>
-                <span id="current-doc-name" class="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] truncate max-w-md">Idle System</span>
+                <div id="doc-status" class="w-2 h-2 bg-slate-300 rounded-full transition-colors duration-500"></div>
+                <span id="current-doc-name" class="text-xs font-bold text-slate-500 uppercase tracking-widest truncate max-w-md">等待上传文件</span>
             </div>
         </header>
 
-        <div id="chat-messages" class="flex-1 overflow-y-auto p-10 space-y-10 max-w-4xl mx-auto w-full">
-            <div class="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-20">
-                <i data-lucide="layers" class="w-16 h-16 text-zinc-400"></i>
-                <p class="text-xs font-bold uppercase tracking-[0.3em]">Ready for Analysis</p>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-6 lg:p-10 space-y-8 max-w-4xl mx-auto w-full">
+            <div class="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
+                <div class="w-16 h-16 bg-slate-200 rounded-2xl flex items-center justify-center mb-2">
+                    <i data-lucide="message-square" class="w-8 h-8 text-slate-400"></i>
+                </div>
+                <p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">开始与你的文档对话</p>
             </div>
         </div>
 
-        <div class="p-10">
-            <div class="max-w-3xl mx-auto relative group">
-                <div class="relative bg-zinc-950 border border-zinc-800 rounded-2xl p-2 flex items-center shadow-2xl shadow-black/50">
-                    <input type="text" id="query-input" 
-                        class="flex-1 bg-transparent border-none outline-none px-4 py-3 text-sm font-medium placeholder:text-zinc-700 text-white" 
-                        placeholder="Execute semantic query..." disabled>
-                    <button id="send-btn" disabled
-                        class="px-6 py-3 bg-zinc-100 text-zinc-950 rounded-xl hover:bg-rose-600 hover:text-white transition-all duration-300 font-bold text-[10px] uppercase tracking-widest">
-                        Run
-                    </button>
+        <!-- Input Area -->
+        <div class="p-6 lg:p-10">
+            <div class="max-w-3xl mx-auto">
+                <div class="relative group">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-10 group-focus-within:opacity-20 transition duration-1000"></div>
+                    <div class="relative bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 p-2 flex items-center focus-within:border-blue-400 transition-all">
+                        <input type="text" id="query-input" 
+                            class="flex-1 bg-transparent border-none outline-none px-4 py-3 text-sm font-medium placeholder:text-slate-400 text-slate-800" 
+                            placeholder="询问关于文档的问题..." disabled>
+                        <button id="send-btn" disabled
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl transition-all font-bold text-xs uppercase tracking-widest disabled:opacity-50">
+                            发送
+                        </button>
+                    </div>
                 </div>
+                <p class="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">NeuralDocs Engine v1.0 • Powered by Qwen-VL & BAAI</p>
             </div>
         </div>
     </main>
@@ -172,6 +274,7 @@
         const uploadProgress = document.getElementById('upload-progress');
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
+        const uploadStepLog = document.getElementById('upload-step-log');
         const queryInput = document.getElementById('query-input');
         const sendBtn = document.getElementById('send-btn');
         const chatMessages = document.getElementById('chat-messages');
@@ -180,6 +283,19 @@
         const markdownViewer = document.getElementById('markdown-viewer');
         const currentDocName = document.getElementById('current-doc-name');
         const docStatus = document.getElementById('doc-status');
+        const cfgChunkSize = document.getElementById('cfg-chunk-size');
+        const cfgChunkOverlap = document.getElementById('cfg-chunk-overlap');
+        const cfgMaxChunksPerPage = document.getElementById('cfg-max-chunks-per-page');
+        const cfgMaxTotalChunks = document.getElementById('cfg-max-total-chunks');
+        const historyList = document.getElementById('history-list');
+        const paramsToggle = document.getElementById('params-toggle');
+        const paramsContent = document.getElementById('params-content');
+        const paramsChevron = document.getElementById('params-chevron');
+
+        paramsToggle.onclick = () => {
+            paramsContent.classList.toggle('hidden');
+            paramsChevron.classList.toggle('rotate-90');
+        };
 
         const btnTabMarkdown = document.getElementById('btn-tab-markdown');
         const btnTabVisual = document.getElementById('btn-tab-visual');
@@ -187,16 +303,132 @@
         const panelVisual = document.getElementById('panel-visual');
 
         let chatHistory = [];
+        let latestSources = [];
+        let currentUploadId = null;
+
+        async function fetchHistory() {
+            try {
+                const response = await fetch('/history');
+                const data = await response.json();
+                if (data.length === 0) {
+                    historyList.innerHTML = '<p class="text-[10px] text-slate-400 text-center py-4 italic">暂无历史记录</p>';
+                    return;
+                }
+                historyList.innerHTML = data.map(item => `
+                    <div class="group relative bg-white border border-slate-100 rounded-xl hover:border-blue-400 hover:shadow-md transition-all cursor-pointer overflow-hidden">
+                        <div onclick="loadHistory('${item.upload_id}')" class="p-3 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold text-slate-700 truncate">${item.filename}</p>
+                                <p class="text-[9px] text-slate-400 mt-0.5">${new Date(item.timestamp * 1000).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteHistory(event, '${item.upload_id}')" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            } catch (e) {
+                console.error("Failed to fetch history:", e);
+            }
+        }
+
+        async function deleteHistory(event, uploadId) {
+            event.stopPropagation();
+            if (!confirm('确定要删除这条历史记录吗？')) return;
+            try {
+                const response = await fetch(`/history/${uploadId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    fetchHistory();
+                    if (currentUploadId === uploadId) {
+                        // If we are viewing the deleted one, clear UI
+                        visualPreviewList.innerHTML = '';
+                        markdownViewer.innerText = '';
+                        chatMessages.innerHTML = '';
+                        currentDocName.textContent = "等待上传文件";
+                        docStatus.className = "w-2 h-2 bg-slate-300 rounded-full";
+                        infoCard.classList.add('hidden');
+                        currentUploadId = null;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to delete history:", e);
+            }
+        }
+
+        async function loadHistory(uploadId) {
+            // Reset UI State
+            visualPreviewList.innerHTML = '';
+            markdownViewer.innerText = '';
+            chatMessages.innerHTML = '';
+            chatHistory = []; 
+            latestSources = [];
+            infoCard.classList.add('hidden');
+            currentDocName.textContent = "正在从历史记录加载...";
+            docStatus.className = "w-2 h-2 bg-amber-500 rounded-full animate-pulse";
+
+            try {
+                const response = await fetch('/history/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ upload_id: uploadId })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || '加载失败');
+
+                renderDocument(data);
+                currentUploadId = uploadId;
+                addMessage('bot', `已从历史记录加载 **${data.filename}**。你可以继续向我提问。`);
+            } catch (error) {
+                addMessage('bot', `**加载失败**: ${error.message}`);
+                docStatus.className = "w-2 h-2 bg-rose-500 rounded-full";
+                currentDocName.textContent = "Error";
+            }
+        }
+
+        function renderDocument(data) {
+            queryInput.disabled = false; sendBtn.disabled = false;
+            currentDocName.textContent = data.filename;
+            docStatus.className = "w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]";
+            chatMessages.innerHTML = '';
+            switchTab('visual');
+
+            infoCard.classList.remove('hidden');
+            if (data.pages) {
+                markdownViewer.innerText = data.pages.map(p => `[PAGE ${p.page_num}]\n${p.markdown}`).join('\n\n');
+                data.pages.forEach(page => {
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'space-y-2';
+                    pageDiv.id = `page-container-${page.page_num}`;
+                    pageDiv.innerHTML = `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">PAGE ${page.page_num}</div>
+                        <div class="image-wrapper">
+                            <img src="${page.image_url}" class="page-img">
+                            <div id="source-overlay-${page.page_num}" class="source-overlay"></div>
+                        </div>`;
+                    visualPreviewList.appendChild(pageDiv);
+                });
+            }
+        }
+
+        // Call fetchHistory on page load
+        window.addEventListener('DOMContentLoaded', fetchHistory);
 
         function switchTab(tab) {
             if (tab === 'markdown') {
-                btnTabMarkdown.className = 'flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-rose-600 text-white transition-all';
-                btnTabVisual.className = 'flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-all';
+                btnTabMarkdown.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+                btnTabMarkdown.classList.remove('text-slate-500');
+                btnTabVisual.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+                btnTabVisual.classList.add('text-slate-500');
                 panelMarkdown.classList.remove('hidden');
                 panelVisual.classList.add('hidden');
             } else {
-                btnTabVisual.className = 'flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-rose-600 text-white transition-all';
-                btnTabMarkdown.className = 'flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 border-transparent text-zinc-500 hover:text-zinc-300 transition-all';
+                btnTabVisual.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+                btnTabVisual.classList.remove('text-slate-500');
+                btnTabMarkdown.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+                btnTabMarkdown.classList.add('text-slate-500');
                 panelVisual.classList.remove('hidden');
                 panelMarkdown.classList.add('hidden');
             }
@@ -206,9 +438,9 @@
         btnTabVisual.onclick = () => switchTab('visual');
 
         dropZone.onclick = () => fileInput.click();
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-rose-500'); };
-        dropZone.ondragleave = () => { dropZone.classList.remove('border-rose-500'); };
-        dropZone.ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]); };
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+        dropZone.ondragleave = () => { dropZone.classList.remove('dragover'); };
+        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]); };
         fileInput.onchange = () => { if (fileInput.files.length) handleUpload(fileInput.files[0]); };
 
         async function handleUpload(file) {
@@ -216,61 +448,92 @@
             visualPreviewList.innerHTML = '';
             markdownViewer.innerText = '';
             chatMessages.innerHTML = '';
-            chatHistory = []; // Clear history
+            chatHistory = []; 
+            latestSources = [];
             infoCard.classList.add('hidden');
-            currentDocName.textContent = "Processing...";
-            docStatus.className = "w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse";
+            currentDocName.textContent = "正在处理文件...";
+            docStatus.className = "w-2 h-2 bg-amber-500 rounded-full animate-pulse";
+            uploadStepLog.innerHTML = '';
 
             const formData = new FormData();
+            const uploadId = `up_${Date.now()}`;
             formData.append('file', file);
+            formData.append('upload_id', uploadId);
+            
+            const chunkSizeVal = parseInt(cfgChunkSize.value, 10);
+            const chunkOverlapVal = parseInt(cfgChunkOverlap.value, 10);
+            const maxChunksPerPageVal = parseInt(cfgMaxChunksPerPage.value, 10);
+            const maxTotalChunksVal = parseInt(cfgMaxTotalChunks.value, 10);
+            
+            if (!Number.isNaN(chunkSizeVal)) formData.append('chunk_size', String(chunkSizeVal));
+            if (!Number.isNaN(chunkOverlapVal)) formData.append('chunk_overlap', String(chunkOverlapVal));
+            if (!Number.isNaN(maxChunksPerPageVal)) formData.append('max_chunks_per_page', String(maxChunksPerPageVal));
+            if (!Number.isNaN(maxTotalChunksVal)) formData.append('max_total_chunks', String(maxTotalChunksVal));
+            
             uploadProgress.classList.remove('hidden');
-            progressBar.style.width = '30%'; progressText.innerText = '30%';
+            progressBar.classList.remove('bg-rose-500');
+            progressBar.classList.add('bg-blue-600');
+            progressBar.style.width = '5%';
+            progressText.innerText = '5%';
+            uploadStepLog.innerHTML = `<div>已创建解析任务</div>`;
+
+            const startedAt = Date.now();
+            let lastStage = '';
+            let statusStream = null;
+            
+            const appendStep = (message) => {
+                const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                const line = document.createElement('div');
+                line.textContent = `[${elapsed}s] ${message}`;
+                uploadStepLog.appendChild(line);
+                uploadStepLog.scrollTop = uploadStepLog.scrollHeight;
+            };
+
+            const startStatusStream = () => {
+                statusStream = new EventSource(`/upload_events/${uploadId}`);
+                statusStream.onmessage = (evt) => {
+                    try {
+                        const statusData = JSON.parse(evt.data || '{}');
+                        const progress = Number(statusData.progress || 0);
+                        const msg = statusData.message || '处理中';
+                        progressBar.style.width = `${progress}%`;
+                        progressText.innerText = `${progress}%`;
+                        if (statusData.stage && statusData.stage !== lastStage) {
+                            lastStage = statusData.stage;
+                            appendStep(msg);
+                        }
+                        if (statusData.stage === 'done' || statusData.stage === 'error') {
+                            stopStatusStream();
+                        }
+                    } catch (e) {}
+                };
+            };
+            const stopStatusStream = () => { if (statusStream) { statusStream.close(); statusStream = null; } };
+            startStatusStream();
             
             try {
                 const response = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await response.json();
                 
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Upload failed');
-                }
+                if (!response.ok) throw new Error(data.detail || '上传失败');
 
-                progressBar.style.width = '100%'; progressText.innerText = '100%';
-                setTimeout(() => uploadProgress.classList.add('hidden'), 800);
-
-                queryInput.disabled = false; sendBtn.disabled = false;
-                currentDocName.textContent = data.filename;
-                docStatus.className = "w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]";
-                chatMessages.innerHTML = '';
-                switchTab('visual');
-
-                infoCard.classList.remove('hidden');
-                if (data.pages) {
-                    markdownViewer.innerText = data.pages.map(p => `[PAGE ${p.page_num}]\n${p.markdown}`).join('\n\n');
-                }
+                stopStatusStream();
+                progressBar.style.width = '100%'; 
+                progressText.innerText = '100%';
                 
-                visualPreviewList.innerHTML = '';
-                if (data.pages) {
-                    data.pages.forEach(page => {
-                        const pageDiv = document.createElement('div');
-                        pageDiv.className = 'space-y-3';
-                        pageDiv.id = `page-container-${page.page_num}`; // Add ID for scrolling
-                        let boxesHtml = (page.boxes || []).map(box => `
-                            <div class="ocr-box" data-label="${box.type}" style="left:${box.x}%; top:${box.y}%; width:${box.w}%; height:${box.h}%;"></div>
-                        `).join('');
-                        pageDiv.innerHTML = `<div class="text-[9px] font-bold text-zinc-600 uppercase">Page ${page.page_num}</div>
-                            <div class="image-wrapper shadow-2xl"><img src="${page.image_url}" class="page-img">${boxesHtml}</div>`;
-                        visualPreviewList.appendChild(pageDiv);
-                    });
-                }
-                addMessage('bot', `System online. document **${data.filename}** ingested successfully.`);
+                setTimeout(() => uploadProgress.classList.add('hidden'), 1000);
+
+                renderDocument(data);
+                currentUploadId = data.upload_id;
+                addMessage('bot', `你好！文档 **${data.filename}** 已成功解析并建立索引。你可以向我提问关于该文档的任何问题。`);
+                fetchHistory(); // Refresh history list
             } catch (error) { 
-                console.error(error);
-                progressBar.style.width = '100%';
-                progressBar.classList.add('bg-red-600');
-                progressText.innerText = 'ERROR';
-                addMessage('bot', `**UPLOAD_ERROR**: ${error.message}`);
-                docStatus.className = "w-1.5 h-1.5 bg-red-500 rounded-full";
-                currentDocName.textContent = "Error Occurred";
+                stopStatusStream();
+                progressBar.classList.replace('bg-blue-600', 'bg-rose-500');
+                progressText.innerText = 'ERR';
+                addMessage('bot', `**解析失败**: ${error.message}`);
+                docStatus.className = "w-2 h-2 bg-rose-500 rounded-full";
+                currentDocName.textContent = "Error";
             }
         }
 
@@ -281,53 +544,54 @@
             queryInput.value = '';
             
             const loadingId = 'L' + Date.now();
-            addMessage('bot', '<div class="flex gap-1.5"><span class="w-1 h-1 bg-rose-500 rounded-full animate-ping"></span><span class="w-1 h-1 bg-rose-500 rounded-full animate-ping"></span><span class="w-1 h-1 bg-rose-500 rounded-full animate-ping"></span></div>', loadingId);
+            addMessage('bot', '<div class="flex gap-1.5"><span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></span><span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></span><span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></span></div>', loadingId);
 
             try {
                 const response = await fetch('/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        question: q,
-                        history: chatHistory
-                    })
+                    body: JSON.stringify({ question: q, history: chatHistory })
                 });
                 const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Query failed');
-                }
+                if (!response.ok) throw new Error(data.detail || 'Query failed');
 
                 updateLastMessage(data.answer, data.sources, loadingId);
-                chatHistory.push({ role: 'user', content: q }); // Push after success
-                chatHistory.push({ role: 'assistant', content: data.answer });
+                chatHistory.push({ role: 'user', content: q }, { role: 'assistant', content: data.answer });
             } catch (error) { 
-                console.error(error);
-                updateLastMessage(`**ERROR**: ${error.message}`, [], loadingId); 
+                updateLastMessage(`**错误**: ${error.message}`, [], loadingId); 
             }
         }
 
-        function scrollToPage(pageNum) {
+        function scrollToSource(sourceIndex) {
+            const source = latestSources[sourceIndex];
+            if (!source) return;
             switchTab('visual');
-            const el = document.getElementById(`page-container-${pageNum}`);
+            document.querySelectorAll('.source-overlay').forEach(o => o.innerHTML = '');
+            const el = document.getElementById(`page-container-${source.page}`);
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                // Highlight effect
-                el.classList.add('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-offset-zinc-900');
-                setTimeout(() => el.classList.remove('ring-2', 'ring-rose-500', 'ring-offset-2', 'ring-offset-zinc-900'), 2000);
+                const overlay = document.getElementById(`source-overlay-${source.page}`);
+                if (overlay && source.bbox) {
+                    const hit = document.createElement('div');
+                    hit.className = 'source-hit-box';
+                    hit.setAttribute('data-label', source.box_type || 'Source');
+                    hit.style.left = `${source.bbox.x}%`; hit.style.top = `${source.bbox.y}%`;
+                    hit.style.width = `${source.bbox.w}%`; hit.style.height = `${source.bbox.h}%`;
+                    overlay.appendChild(hit);
+                }
             }
         }
 
         function addMessage(role, text, id = null) {
             const div = document.createElement('div');
-            div.className = `flex gap-6 animate-fade-in ${role === 'user' ? 'flex-row-reverse' : ''}`;
+            div.className = `flex gap-4 animate-slide-up ${role === 'user' ? 'flex-row-reverse' : ''}`;
             if (id) div.id = id;
-            const bubbleStyle = role === 'bot' ? 'bubble-bot rounded-2xl rounded-tl-none text-zinc-300' : 'bubble-user rounded-2xl rounded-tr-none';
+            const bubbleStyle = role === 'bot' ? 'bubble-bot rounded-2xl rounded-tl-none' : 'bubble-user rounded-2xl rounded-tr-none';
             div.innerHTML = `
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${role === 'bot' ? 'bg-zinc-800 text-rose-500' : 'bg-zinc-100 text-zinc-950'}">
-                    <i data-lucide="${role === 'bot' ? 'cpu' : 'user'}" class="w-5 h-5"></i>
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${role === 'bot' ? 'bg-slate-50 text-blue-600' : 'bg-blue-100 text-blue-700 border-transparent'}">
+                    <i data-lucide="${role === 'bot' ? 'sparkles' : 'user'}" class="w-4 h-4"></i>
                 </div>
-                <div class="${bubbleStyle} p-6 max-w-[85%] text-sm leading-relaxed content-area">
+                <div class="${bubbleStyle} p-4 max-w-[85%] text-sm leading-relaxed shadow-sm">
                     <div class="msg-text">${text}</div>
                 </div>
             `;
@@ -340,28 +604,31 @@
         function updateLastMessage(answer, sources = [], id) {
             const container = document.getElementById(id);
             const textElem = container.querySelector('.msg-text');
-            let html = `<p class="font-medium text-white leading-relaxed">${answer}</p>`;
+            latestSources = sources || [];
+            let html = `<div class="font-medium text-slate-800 leading-relaxed">${answer}</div>`;
             if (sources && sources.length > 0) {
-                html += `<div class="mt-6 pt-4 border-t border-zinc-800">
-                    <p class="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Grounding Evidence</p>
-                    <div class="flex flex-wrap gap-2">`;
-                
-                sources.forEach(src => {
-                    // Handle both old string format (if cached) and new object format
+                html += `<div class="mt-4 pt-4 border-t border-slate-100">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">参考来源（按置信度排序）</p>
+                    <div class="flex flex-wrap gap-3 overflow-x-auto pb-2 pt-3">`;
+                sources.forEach((src, idx) => {
                     const page = src.page || '?';
-                    const score = typeof src.score === 'number' ? src.score.toFixed(2) : 'N/A';
-                    const text = src.preview || src;
-                    
+                    const preview = src.preview || '';
+                    const isTop = idx === 0;
                     html += `
-                        <button onclick="scrollToPage(${page})" class="group flex flex-col text-left bg-black/40 hover:bg-rose-500/10 border border-zinc-800 hover:border-rose-500/50 p-2 rounded-lg transition-all max-w-full">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[9px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">PAGE ${page}</span>
-                                <span class="text-[9px] text-zinc-500">Score: ${score}</span>
+                        <button onclick="scrollToSource(${idx})" 
+                            class="source-card flex flex-col text-left p-2.5 rounded-xl w-40 shrink-0 relative ${isTop ? 'border-blue-200 bg-blue-50/20' : ''}">
+                            ${isTop ? '<div class="absolute -top-3 -right-1.5 text-rose-500 drop-shadow-sm z-10"><i data-lucide="star" class="w-5 h-5 fill-current"></i></div>' : ''}
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[9px] font-bold ${isTop ? 'text-blue-700 bg-blue-100' : 'text-blue-600 bg-blue-50'} px-1.5 py-0.5 rounded">P${page}</span>
+                                <div class="flex items-center gap-1">
+                                    <div class="w-1 h-1 rounded-full ${src.score > 0.5 ? 'bg-emerald-400' : 'bg-amber-400'}"></div>
+                                    <span class="text-[9px] text-slate-500 font-mono font-bold">${src.score ? (src.score > 1 ? src.score.toFixed(1) : src.score.toFixed(3)) : ''}</span>
+                                </div>
                             </div>
-                            <span class="text-[10px] font-mono text-zinc-400 group-hover:text-zinc-300 line-clamp-2 w-full">"${text}"</span>
+                            ${src.image_url ? `<img src="${src.image_url}" class="w-full h-20 object-contain bg-white border border-slate-100 rounded-lg mb-2 shadow-sm">` : ''}
+                            <span class="text-[10px] text-slate-600 line-clamp-2 leading-snug italic">"${preview}"</span>
                         </button>`;
                 });
-                
                 html += `</div></div>`;
             }
             textElem.innerHTML = html;
