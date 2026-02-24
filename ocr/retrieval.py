@@ -6,11 +6,11 @@ from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_community.retrievers import BM25Retriever
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.schema import Document
 from zvec import (
+    BM25EmbeddingFunction,
     Collection,
     CollectionSchema,
     CollectionOption,
@@ -19,6 +19,7 @@ from zvec import (
     FieldSchema,
     VectorQuery,
     VectorSchema,
+    WeightedReRanker,
     create_and_open,
 )
 
@@ -120,7 +121,6 @@ class PDFRetriever:
         self.enable_rerank = os.getenv("ENABLE_RERANK", "1") == "1"  # 默认开启 rerank，提升准确度
         self.rerank_threshold = int(os.getenv("RERANK_THRESHOLD", "2"))
         self.vector_k = int(os.getenv("VECTOR_K", "10"))
-        self.bm25_k = int(os.getenv("BM25_K", "10"))
         self.initial_candidate_limit = int(os.getenv("INITIAL_CANDIDATE_LIMIT", "20"))
         self.final_context_docs = int(os.getenv("FINAL_CONTEXT_DOCS", "5"))
         self.answer_timeout_sec = int(os.getenv("ANSWER_TIMEOUT_SEC", "120"))  # 增加到 120 秒
@@ -134,19 +134,82 @@ class PDFRetriever:
         os.makedirs(self.zvec_document_root, exist_ok=True)
         self.zvec_collection = None
         self.zvec_doc_map = {}
-        self.bm25_retriever = None
+        self.zvec_dense_field = "dense_embedding"
+        self.zvec_sparse_field = "sparse_embedding"
+        self.zvec_dense_weight = float(os.getenv("ZVEC_DENSE_WEIGHT", "0.6"))
+        self.zvec_sparse_weight = float(os.getenv("ZVEC_SPARSE_WEIGHT", "0.4"))
+        self.sparse_doc_encoder = None
+        self.sparse_query_encoder = None
+
+    def _escape_filter_value(self, value: str) -> str:
+        return str(value).replace("\\", "\\\\").replace("'", "\\'")
+
+    def _build_filter_expr(self, filters: dict | None) -> str | None:
+        if not filters:
+            return None
+
+        clauses = []
+        try:
+            page = filters.get("page")
+            if page is not None:
+                clauses.append(f"page == {int(page)}")
+
+            page_min = filters.get("page_min")
+            if page_min is not None:
+                clauses.append(f"page >= {int(page_min)}")
+
+            page_max = filters.get("page_max")
+            if page_max is not None:
+                clauses.append(f"page <= {int(page_max)}")
+
+            chunk_id = filters.get("chunk_id")
+            if chunk_id:
+                escaped = self._escape_filter_value(chunk_id)
+                clauses.append(f"chunk_id == '{escaped}'")
+
+            box_type = filters.get("box_type")
+            if isinstance(box_type, str) and box_type.strip():
+                escaped = self._escape_filter_value(box_type.strip())
+                clauses.append(f"box_type == '{escaped}'")
+            elif isinstance(box_type, list):
+                items = [f"box_type == '{self._escape_filter_value(x)}'" for x in box_type if str(x).strip()]
+                if items:
+                    clauses.append("(" + " or ".join(items) + ")")
+        except Exception as e:
+            print(f"[-] Build filter expression failed: {e}")
+            return None
+
+        return " and ".join(clauses) if clauses else None
 
     def _clone_doc(self, doc: Document) -> Document:
         return Document(page_content=doc.page_content, metadata=dict(doc.metadata))
 
-    def _query_vector_docs(self, question: str) -> list[Document]:
+    def _query_vector_docs(self, question: str, filters: dict | None = None) -> list[Document]:
         if not self.zvec_collection:
             return []
         try:
-            query_vector = self.embeddings.embed_query(question)
+            dense_query = self.embeddings.embed_query(question)
+            vector_queries = [VectorQuery(self.zvec_dense_field, vector=dense_query)]
+            reranker = None
+            filter_expr = self._build_filter_expr(filters)
+
+            if self.sparse_query_encoder:
+                sparse_query = self.sparse_query_encoder.embed(question)
+                if sparse_query:
+                    vector_queries.append(VectorQuery(self.zvec_sparse_field, vector=sparse_query))
+                    reranker = WeightedReRanker(
+                        topn=self.vector_k,
+                        weights={
+                            self.zvec_dense_field: self.zvec_dense_weight,
+                            self.zvec_sparse_field: self.zvec_sparse_weight,
+                        },
+                    )
+
             raw_results = self.zvec_collection.query(
-                vectors=[VectorQuery("embedding", vector=query_vector)],
+                vectors=vector_queries,
                 topk=self.vector_k,
+                filter=filter_expr,
+                reranker=reranker,
             )
             if not raw_results:
                 return []
@@ -157,39 +220,12 @@ class PDFRetriever:
                 if not base_doc:
                     continue
                 doc = self._clone_doc(base_doc)
-                doc.metadata["vector_score"] = float(getattr(hit, "score", 0.0))
+                doc.metadata["zvec_score"] = float(getattr(hit, "score", 0.0))
                 docs.append(doc)
             return docs
         except Exception as e:
-            print(f"[-] Zvec vector query failed: {e}")
+            print(f"[-] Zvec dense+sparse query failed: {e}")
             return []
-
-    def _hybrid_retrieve(self, question: str) -> list[Document]:
-        vector_docs = self._query_vector_docs(question)
-        bm25_docs = self.bm25_retriever.invoke(question) if self.bm25_retriever else []
-        bm25_docs = [self._clone_doc(d) for d in bm25_docs]
-
-        fused_scores = {}
-        doc_map = {}
-        weighted_results = [
-            (vector_docs, 0.6),
-            (bm25_docs, 0.4),
-        ]
-        rank_bias = 60
-
-        for docs, weight in weighted_results:
-            for rank, doc in enumerate(docs):
-                doc_key = doc.metadata.get("chunk_id") or f'{doc.metadata.get("page", 0)}::{doc.page_content[:80]}'
-                if doc_key not in doc_map:
-                    doc_map[doc_key] = doc
-                if doc_key not in fused_scores:
-                    fused_scores[doc_key] = 0.0
-                fused_scores[doc_key] += weight / (rank + rank_bias)
-
-        reranked = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
-        for key, score in reranked:
-            doc_map[key].metadata["relevance_score"] = score
-        return [doc_map[key] for key, _ in reranked]
 
     def _invoke_with_timeout(self, runnable, payload: dict, timeout_sec: int):
         executor = ThreadPoolExecutor(max_workers=1)
@@ -524,19 +560,32 @@ class PDFRetriever:
                     "total_ms": total_ms,
                 }
 
-            # 使用 Zvec 构建向量索引
+            # 使用 Zvec 构建 Dense+Sparse 混合索引
             index_start = time.perf_counter()
-            embeddings = self.embeddings.embed_documents([d.page_content for d in documents])
+            texts = [d.page_content for d in documents]
+            dense_embeddings = self.embeddings.embed_documents(texts)
+            self.sparse_doc_encoder = BM25EmbeddingFunction(corpus=texts, encoding_type="document", language="zh")
+            self.sparse_query_encoder = BM25EmbeddingFunction(corpus=texts, encoding_type="query", language="zh")
+            sparse_embeddings = [self.sparse_doc_encoder.embed(t) for t in texts]
             schema = CollectionSchema(
                 name="ocr_chunks",
                 vectors=[
                     VectorSchema(
-                        name="embedding",
+                        name=self.zvec_dense_field,
                         data_type=DataType.VECTOR_FP32,
-                        dimension=len(embeddings[0]),
-                    )
+                        dimension=len(dense_embeddings[0]),
+                    ),
+                    VectorSchema(
+                        name=self.zvec_sparse_field,
+                        data_type=DataType.SPARSE_VECTOR_FP32,
+                    ),
                 ],
-                fields=[FieldSchema(name="text", data_type=DataType.STRING)],
+                fields=[
+                    FieldSchema(name="text", data_type=DataType.STRING),
+                    FieldSchema(name="page", data_type=DataType.INT32),
+                    FieldSchema(name="chunk_id", data_type=DataType.STRING),
+                    FieldSchema(name="box_type", data_type=DataType.STRING),
+                ],
             )
             collection_path = os.path.join(self.zvec_document_root, f"ocr_{int(time.time())}.zvec")
             self.zvec_collection = create_and_open(
@@ -546,26 +595,31 @@ class PDFRetriever:
             )
             self.zvec_doc_map = {}
             zvec_docs = []
-            for i, (doc, vector) in enumerate(zip(documents, embeddings)):
+            for i, (doc, dense_vector, sparse_vector) in enumerate(zip(documents, dense_embeddings, sparse_embeddings)):
                 doc_id = str(doc.metadata.get("chunk_id") or f"doc_{i}")
                 self.zvec_doc_map[doc_id] = doc
                 zvec_docs.append(
                     Doc(
                         id=doc_id,
-                        vectors={"embedding": vector},
-                        fields={"text": doc.page_content},
+                        vectors={
+                            self.zvec_dense_field: dense_vector,
+                            self.zvec_sparse_field: sparse_vector,
+                        },
+                        fields={
+                            "text": doc.page_content,
+                            "page": int(doc.metadata.get("page", 1)),
+                            "chunk_id": str(doc.metadata.get("chunk_id", doc_id)),
+                            "box_type": str(doc.metadata.get("box_type", "文本")),
+                        },
                     )
                 )
             self.zvec_collection.insert(zvec_docs)
 
-            # 初始化 BM25
-            self.bm25_retriever = BM25Retriever.from_documents(documents)
-            self.bm25_retriever.k = self.bm25_k
-            self.ensemble_retriever = self._hybrid_retrieve
+            self.ensemble_retriever = self._query_vector_docs
             index_ms = round((time.perf_counter() - index_start) * 1000, 2)
             total_ms = round((time.perf_counter() - ingest_start) * 1000, 2)
             
-            print("[+] Hybrid index established with Zvec + BM25.")
+            print("[+] Hybrid index established with Zvec Dense+Sparse.")
             print(
                 f"[+] Ingest stats: docs={len(documents)}, chunks_before={chunks_before_limit}, "
                 f"chunks_after={chunks_after_limit}, build={chunk_build_ms}ms, index={index_ms}ms, total={total_ms}ms"
@@ -634,7 +688,7 @@ class PDFRetriever:
             doc_map[key].metadata["relevance_score"] = score
         return [doc_map[key] for key, score in reranked_results]
 
-    def query(self, question: str, history: list[dict] = []):
+    def query(self, question: str, history: list[dict] = [], filters: dict | None = None):
         if not self.ensemble_retriever:
             return {"answer": "系统尚未加载文档，请先上传。", "sources": []}
         query_start = time.perf_counter()
@@ -680,7 +734,10 @@ class PDFRetriever:
             all_results = []
             for q in all_queries:
                 try:
-                    docs = self.ensemble_retriever(q)
+                    if filters:
+                        docs = self.ensemble_retriever(q, filters)
+                    else:
+                        docs = self.ensemble_retriever(q)
                     all_results.append(docs)
                 except Exception as inner_e:
                     print(f"[-] Retrieve failed on query '{q}': {inner_e}")

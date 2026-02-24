@@ -38,6 +38,7 @@ MAX_UPLOAD_CACHE_ITEMS = 200
 class QueryRequest(BaseModel):
     question: str
     history: List[dict] = Field(default_factory=list)
+    filters: Optional[dict] = None
 
 class LoadHistoryRequest(BaseModel):
     upload_id: str
@@ -333,7 +334,7 @@ async def upload_events(upload_id: str):
 async def query_doc(request: QueryRequest):
     print(f"[*] Received query: {request.question}")
     try:
-        result = retriever.query(request.question, request.history)
+        result = retriever.query(request.question, request.history, request.filters)
         print(f"[+] Query response generated.")
         return result
     except Exception as e:

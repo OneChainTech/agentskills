@@ -2,267 +2,149 @@
   "nodes": [
     {
       "id": "ui_group",
+      "type": "group",
       "x": -640,
       "y": -180,
-      "width": 320,
+      "width": 340,
       "height": 560,
-      "type": "group",
-      "label": "前端界面 (web/index.html)",
+      "label": "现代化 UI 交互层 (web/index.html)",
       "color": "5"
     },
     {
-      "id": "ui_upload",
-      "x": -620,
-      "y": -140,
-      "width": 280,
-      "height": 130,
+      "id": "ui_features",
       "type": "text",
-      "text": "### 上传与配置\n- 文件上传\n- chunk 参数配置\n- 进度展示（SSE）",
-      "color": "5"
-    },
-    {
-      "id": "ui_history",
       "x": -620,
-      "y": 10,
-      "width": 280,
-      "height": 110,
-      "type": "text",
-      "text": "### 历史记录\n- 列表加载\n- 回放并重建索引\n- 删除记录",
-      "color": "5"
-    },
-    {
-      "id": "ui_chat",
-      "x": -620,
-      "y": 140,
-      "width": 280,
-      "height": 180,
-      "type": "text",
-      "text": "### 问答与溯源\n- 多轮对话\n- 来源页与 bbox 高亮\n- Markdown/可视化双视图",
-      "color": "5"
+      "y": -130,
+      "width": 300,
+      "height": 460,
+      "text": "### 核心交互特性\n- **SSE 实时流**：毫秒级展示 PDF 解析进度条。\n- **Grounded 溯源**：点击回答来源，在原始图像上通过 Bbox 自动高亮。\n- **双视图模式**：实时切换『可视化图像』与『Grounded Markdown 源码』。\n- **历史管理**：支持历史会话的一键加载与向量索引瞬时重建。"
     },
     {
       "id": "api_group",
-      "x": -180,
+      "type": "group",
+      "x": -240,
       "y": -180,
       "width": 360,
       "height": 560,
-      "type": "group",
-      "label": "服务层 (server.py)",
+      "label": "服务逻辑层 (server.py)",
       "color": "4"
     },
     {
-      "id": "api_endpoints",
-      "x": -160,
-      "y": -140,
+      "id": "api_logic",
+      "type": "text",
+      "x": -220,
+      "y": -130,
       "width": 320,
-      "height": 500,
-      "type": "text",
-      "text": "## FastAPI Endpoints\n- POST /upload\n- GET /upload_status/{id}\n- GET /upload_events/{id}\n- POST /query\n- GET /history\n- POST /history/load\n- DELETE /history/{id}\n\n状态缓存：UPLOAD_STATUS / UPLOAD_EVENTS",
-      "color": "4"
+      "height": 460,
+      "text": "### FastAPI 服务中枢\n- **异步任务管理**：通过 UPLOAD_STATUS 维护解析任务生命周期。\n- **SSE 中转**：将 OCR 处理进度封装为标准事件流推送至前端。\n- **RAG 调度**：协调查询改写、召回、精排与 LLM 生成的完整 RAG 闭环。\n- **持久化适配**：管理 data/history JSON 记录与 data/images 缓存。"
     },
     {
-      "id": "ingest_group",
-      "x": 240,
-      "y": -220,
-      "width": 380,
-      "height": 280,
+      "id": "engine_group",
       "type": "group",
-      "label": "解析流水线",
-      "color": "3"
+      "x": 180,
+      "y": -220,
+      "width": 400,
+      "height": 280,
+      "label": "认知解析引擎 (engine/ocr.py)",
+      "color": "2"
     },
     {
-      "id": "pdf_node",
-      "x": 260,
-      "y": -180,
-      "width": 160,
-      "height": 90,
+      "id": "ocr_pipeline",
       "type": "text",
-      "text": "pdf_handler.py\n- PDF -> PIL 图片\n- 可调 render scale",
-      "color": "3"
-    },
-    {
-      "id": "ocr_node",
-      "x": 440,
-      "y": -180,
-      "width": 160,
-      "height": 190,
-      "type": "text",
-      "text": "engine/ocr.py\n- 压缩与缩放\n- VLM OCR 调用\n- 失败重试与回退\n- 输出 markdown + boxes",
-      "color": "3"
+      "x": 200,
+      "y": -170,
+      "width": 360,
+      "height": 180,
+      "text": "### Grounded OCR 流水线\n1. **pypdfium2**：执行 3x 高清图像渲染。\n2. **DeepSeek-OCR**：多模态解析生成带坐标对的 Markdown。\n3. **坐标对齐**：通过正则提取与文本相似度匹配，确保 Markdown 块与视觉坐标 100% 绑定。"
     },
     {
       "id": "rag_group",
-      "x": 240,
-      "y": 90,
-      "width": 500,
+      "type": "group",
+      "x": 180,
+      "y": 100,
+      "width": 400,
       "height": 360,
-      "type": "group",
-      "label": "检索与生成 (retrieval.py)",
+      "label": "RAG 检索与生成核心 (retrieval.py)",
       "color": "6"
     },
     {
-      "id": "index_node",
-      "x": 260,
-      "y": 130,
-      "width": 210,
-      "height": 120,
+      "id": "rag_logic",
       "type": "text",
-      "text": "索引构建\n- markdown 分块\n- Chroma(Ephemeral)\n- BM25",
-      "color": "6"
-    },
-    {
-      "id": "retrieve_node",
-      "x": 490,
-      "y": 130,
-      "width": 230,
-      "height": 120,
-      "type": "text",
-      "text": "召回与重排\n- Ensemble 检索\n- RRF 融合\n- 可选 SiliconFlow rerank",
-      "color": "6"
-    },
-    {
-      "id": "answer_node",
-      "x": 260,
-      "y": 270,
-      "width": 460,
-      "height": 150,
-      "type": "text",
-      "text": "答案生成\n- 基于最终上下文调用 LLM\n- 返回 answer + sources(page/bbox/image_url)",
-      "color": "6"
-    },
-    {
-      "id": "ext_group",
-      "x": 790,
-      "y": -130,
-      "width": 260,
-      "height": 300,
-      "type": "group",
-      "label": "外部模型服务",
-      "color": "1"
-    },
-    {
-      "id": "ext_text",
-      "x": 810,
-      "y": -90,
-      "width": 220,
-      "height": 220,
-      "type": "text",
-      "text": "DEEPSEEK_BASE_URL\n- OCR /chat/completions\n- Embedding\n- Chat LLM\n- Rerank API",
-      "color": "1"
-    },
-    {
-      "id": "data_node",
-      "x": -180,
-      "y": 410,
+      "x": 200,
+      "y": 150,
       "width": 360,
-      "height": 90,
-      "type": "file",
-      "file": "ocr/data",
-      "color": "2"
+      "height": 260,
+      "text": "### 智能检索策略\n- **查询改写**：基于历史对话重写 Standalone Query。\n- **Zvec Hybrid Search**：\n  - **Dense**: BGE-M3 语义检索。\n  - **Sparse**: BM25 关键词匹配。\n- **Weighted ReRanker**：原生加权融合 (0.6:0.4)。\n- **BGE 精排**：SiliconFlow Reranker V2 执行二次排序。"
+    },
+    {
+      "id": "storage_node",
+      "type": "text",
+      "x": 640,
+      "y": 100,
+      "width": 260,
+      "height": 150,
+      "text": "### Zvec 混合数据库\n- 本地嵌入式存储\n- 支持 Mmap 快速加载\n- Dense + Sparse 原生索引",
+      "color": "4"
+    },
+    {
+      "id": "cloud_node",
+      "type": "text",
+      "x": 640,
+      "y": 280,
+      "width": 260,
+      "height": 180,
+      "text": "### SiliconFlow API\n- DeepSeek-OCR\n- BGE-M3 Embedding\n- GLM-4.7 / GPT-4o\n- BGE-Reranker-V2",
+      "color": "1"
     }
   ],
   "edges": [
     {
       "id": "e1",
-      "fromNode": "ui_upload",
+      "fromNode": "ui_features",
       "fromSide": "right",
-      "toNode": "api_endpoints",
+      "toNode": "api_logic",
       "toSide": "left",
-      "label": "POST /upload",
-      "color": "4"
+      "label": "Upload / Query"
     },
     {
       "id": "e2",
-      "fromNode": "ui_history",
+      "fromNode": "api_logic",
       "fromSide": "right",
-      "toNode": "api_endpoints",
+      "toNode": "ocr_pipeline",
       "toSide": "left",
-      "label": "history API",
-      "color": "4"
+      "label": "trigger render"
     },
     {
       "id": "e3",
-      "fromNode": "ui_chat",
-      "fromSide": "right",
-      "toNode": "api_endpoints",
-      "toSide": "left",
-      "label": "POST /query",
-      "color": "4"
+      "fromNode": "ocr_pipeline",
+      "fromSide": "bottom",
+      "toNode": "rag_logic",
+      "toSide": "top",
+      "label": "grounded chunks"
     },
     {
       "id": "e4",
-      "fromNode": "api_endpoints",
-      "fromSide": "bottom",
-      "toNode": "data_node",
-      "toSide": "top",
-      "label": "读写上传/历史/图片"
+      "fromNode": "rag_logic",
+      "fromSide": "right",
+      "toNode": "storage_node",
+      "toSide": "left",
+      "label": "hybrid index"
     },
     {
       "id": "e5",
-      "fromNode": "api_endpoints",
+      "fromNode": "rag_logic",
       "fromSide": "right",
-      "toNode": "pdf_node",
+      "toNode": "cloud_node",
       "toSide": "left",
-      "label": "PDF 渲染"
+      "label": "API call"
     },
     {
       "id": "e6",
-      "fromNode": "pdf_node",
-      "fromSide": "right",
-      "toNode": "ocr_node",
-      "toSide": "left",
-      "label": "逐页图片"
-    },
-    {
-      "id": "e7",
-      "fromNode": "ocr_node",
-      "fromSide": "right",
-      "toNode": "ext_text",
-      "toSide": "left",
-      "label": "OCR 请求",
-      "color": "1"
-    },
-    {
-      "id": "e8",
-      "fromNode": "ocr_node",
-      "fromSide": "bottom",
-      "toNode": "index_node",
-      "toSide": "top",
-      "label": "grounded markdown"
-    },
-    {
-      "id": "e9",
-      "fromNode": "index_node",
-      "fromSide": "right",
-      "toNode": "retrieve_node",
-      "toSide": "left",
-      "label": "hybrid recall"
-    },
-    {
-      "id": "e10",
-      "fromNode": "retrieve_node",
-      "fromSide": "bottom",
-      "toNode": "answer_node",
-      "toSide": "top",
-      "label": "final docs"
-    },
-    {
-      "id": "e11",
-      "fromNode": "answer_node",
-      "fromSide": "right",
-      "toNode": "ext_text",
-      "toSide": "left",
-      "label": "LLM 生成",
-      "color": "1"
-    },
-    {
-      "id": "e12",
-      "fromNode": "api_endpoints",
+      "fromNode": "api_logic",
       "fromSide": "left",
-      "toNode": "ui_chat",
+      "toNode": "ui_features",
       "toSide": "right",
-      "label": "answer + sources",
-      "color": "5"
+      "label": "SSE Progress"
     }
   ]
 }
