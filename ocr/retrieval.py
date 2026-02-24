@@ -2,17 +2,25 @@ import os
 import re
 import time
 import httpx
-import chromadb
 from difflib import SequenceMatcher
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from dotenv import load_dotenv
-from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.schema import Document
+from zvec import (
+    Collection,
+    CollectionSchema,
+    CollectionOption,
+    DataType,
+    Doc,
+    FieldSchema,
+    VectorQuery,
+    VectorSchema,
+    create_and_open,
+)
 
 load_dotenv()
 
@@ -89,11 +97,6 @@ class SiliconFlowReranker:
 
 class PDFRetriever:
     def __init__(self):
-        # 核心修改：使用内存模式 (EphemeralClient)，彻底解决磁盘只读错误，提升检索响应速度
-        # 禁用匿名遥测，防止因无法连接 PostHog 导致的上传失败
-        from chromadb.config import Settings
-        self.client = chromadb.EphemeralClient(settings=Settings(anonymized_telemetry=False))
-        
         self.embeddings = OpenAIEmbeddings(
             api_key=os.getenv("DEEPSEEK_API_KEY"),
             base_url=os.getenv("DEEPSEEK_BASE_URL"),
@@ -127,6 +130,66 @@ class PDFRetriever:
         self.max_chunks_per_page = int(os.getenv("MAX_CHUNKS_PER_PAGE", "10"))
         self.max_total_chunks = int(os.getenv("MAX_TOTAL_CHUNKS", "80"))
         self.current_upload_id = None
+        self.zvec_document_root = os.getenv("ZVEC_DOCUMENT_ROOT", "./data/zvec")
+        os.makedirs(self.zvec_document_root, exist_ok=True)
+        self.zvec_collection = None
+        self.zvec_doc_map = {}
+        self.bm25_retriever = None
+
+    def _clone_doc(self, doc: Document) -> Document:
+        return Document(page_content=doc.page_content, metadata=dict(doc.metadata))
+
+    def _query_vector_docs(self, question: str) -> list[Document]:
+        if not self.zvec_collection:
+            return []
+        try:
+            query_vector = self.embeddings.embed_query(question)
+            raw_results = self.zvec_collection.query(
+                vectors=[VectorQuery("embedding", vector=query_vector)],
+                topk=self.vector_k,
+            )
+            if not raw_results:
+                return []
+            docs = []
+            for hit in raw_results:
+                hit_id = str(getattr(hit, "id", ""))
+                base_doc = self.zvec_doc_map.get(hit_id)
+                if not base_doc:
+                    continue
+                doc = self._clone_doc(base_doc)
+                doc.metadata["vector_score"] = float(getattr(hit, "score", 0.0))
+                docs.append(doc)
+            return docs
+        except Exception as e:
+            print(f"[-] Zvec vector query failed: {e}")
+            return []
+
+    def _hybrid_retrieve(self, question: str) -> list[Document]:
+        vector_docs = self._query_vector_docs(question)
+        bm25_docs = self.bm25_retriever.invoke(question) if self.bm25_retriever else []
+        bm25_docs = [self._clone_doc(d) for d in bm25_docs]
+
+        fused_scores = {}
+        doc_map = {}
+        weighted_results = [
+            (vector_docs, 0.6),
+            (bm25_docs, 0.4),
+        ]
+        rank_bias = 60
+
+        for docs, weight in weighted_results:
+            for rank, doc in enumerate(docs):
+                doc_key = doc.metadata.get("chunk_id") or f'{doc.metadata.get("page", 0)}::{doc.page_content[:80]}'
+                if doc_key not in doc_map:
+                    doc_map[doc_key] = doc
+                if doc_key not in fused_scores:
+                    fused_scores[doc_key] = 0.0
+                fused_scores[doc_key] += weight / (rank + rank_bias)
+
+        reranked = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+        for key, score in reranked:
+            doc_map[key].metadata["relevance_score"] = score
+        return [doc_map[key] for key, _ in reranked]
 
     def _invoke_with_timeout(self, runnable, payload: dict, timeout_sec: int):
         executor = ThreadPoolExecutor(max_workers=1)
@@ -461,28 +524,48 @@ class PDFRetriever:
                     "total_ms": total_ms,
                 }
 
-            # 内存中创建临时向量库
+            # 使用 Zvec 构建向量索引
             index_start = time.perf_counter()
-            vectorstore = Chroma.from_documents(
-                documents=documents,
-                embedding=self.embeddings,
-                client=self.client,
-                collection_name=f"temp_idx_{int(time.time())}"
+            embeddings = self.embeddings.embed_documents([d.page_content for d in documents])
+            schema = CollectionSchema(
+                name="ocr_chunks",
+                vectors=[
+                    VectorSchema(
+                        name="embedding",
+                        data_type=DataType.VECTOR_FP32,
+                        dimension=len(embeddings[0]),
+                    )
+                ],
+                fields=[FieldSchema(name="text", data_type=DataType.STRING)],
             )
-            
-            # 初始化 BM25
-            bm25_retriever = BM25Retriever.from_documents(documents)
-            bm25_retriever.k = self.bm25_k
+            collection_path = os.path.join(self.zvec_document_root, f"ocr_{int(time.time())}.zvec")
+            self.zvec_collection = create_and_open(
+                path=collection_path,
+                schema=schema,
+                option=CollectionOption(read_only=False, enable_mmap=True),
+            )
+            self.zvec_doc_map = {}
+            zvec_docs = []
+            for i, (doc, vector) in enumerate(zip(documents, embeddings)):
+                doc_id = str(doc.metadata.get("chunk_id") or f"doc_{i}")
+                self.zvec_doc_map[doc_id] = doc
+                zvec_docs.append(
+                    Doc(
+                        id=doc_id,
+                        vectors={"embedding": vector},
+                        fields={"text": doc.page_content},
+                    )
+                )
+            self.zvec_collection.insert(zvec_docs)
 
-            # 构造混合检索器
-            self.ensemble_retriever = EnsembleRetriever(
-                retrievers=[vectorstore.as_retriever(search_kwargs={"k": self.vector_k}), bm25_retriever],
-                weights=[0.6, 0.4]
-            )
+            # 初始化 BM25
+            self.bm25_retriever = BM25Retriever.from_documents(documents)
+            self.bm25_retriever.k = self.bm25_k
+            self.ensemble_retriever = self._hybrid_retrieve
             index_ms = round((time.perf_counter() - index_start) * 1000, 2)
             total_ms = round((time.perf_counter() - ingest_start) * 1000, 2)
             
-            print("[+] Hybrid index established in memory.")
+            print("[+] Hybrid index established with Zvec + BM25.")
             print(
                 f"[+] Ingest stats: docs={len(documents)}, chunks_before={chunks_before_limit}, "
                 f"chunks_after={chunks_after_limit}, build={chunk_build_ms}ms, index={index_ms}ms, total={total_ms}ms"
@@ -597,7 +680,7 @@ class PDFRetriever:
             all_results = []
             for q in all_queries:
                 try:
-                    docs = self.ensemble_retriever.invoke(q)
+                    docs = self.ensemble_retriever(q)
                     all_results.append(docs)
                 except Exception as inner_e:
                     print(f"[-] Retrieve failed on query '{q}': {inner_e}")
