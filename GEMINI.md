@@ -62,12 +62,18 @@ Located in `.gemini/skills/` and `.claude/skills/`.
 This system defines "skills"—specialized capabilities and domain knowledge that can be dynamically loaded by an agent.
 
 ### Available Skills
-Refer to `AGENTS.md` for the authoritative list of active skills. Common skills include:
-*   **frontend-design**: Guidelines for high-quality UI/UX generation.
-*   **mcp-builder**: Guide for building Model Context Protocol servers.
-*   **playwright-skill**: Browser automation using Playwright.
-*   **skill-creator**: Meta-skill for creating new skills.
-*   **ui-ux-pro-max**: Comprehensive UI/UX design resource.
+Refer to AGENTS.md for the authoritative list of active skills. Current available skills include:
+*   **agent-browser**: A fast Rust-based headless browser automation CLI with Node.js fallback that enables AI agents to navigate, click, type, and snapshot pages via structured commands.
+*   **excalidraw-diagram**: Generate Excalidraw diagrams from text content. Supports three output modes - Obsidian (.md), Standard (.excalidraw), and Animated (.excalidraw with animation order).
+*   **frontend-design**: Create distinctive, production-grade frontend interfaces with high design quality.
+*   **json-canvas**: Create and edit JSON Canvas files (.canvas) with nodes, edges, groups, and connections.
+*   **mcp-builder**: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools.
+*   **mermaid-diagram-specialist**: Mermaid diagram specialist for creating flowcharts, sequence diagrams, ERDs, and architecture visualizations.
+*   **obsidian-markdown**: Create and edit Obsidian Flavored Markdown with wikilinks, embeds, callouts, properties, and other Obsidian-specific syntax.
+*   **planning-with-files**: Transforms workflow to use Manus-style persistent markdown files for planning, progress tracking, and knowledge storage.
+*   **skill-creator**: Guide for creating effective skills.
+*   **ui-ux-pro-max**: Comprehensive UI/UX design intelligence resource covering styles, palettes, font pairings, and best practices.
+
 
 ### Skill Structure
 Each skill directory (e.g., `.gemini/skills/skill-name/`) typically contains:

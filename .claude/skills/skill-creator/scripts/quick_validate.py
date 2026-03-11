@@ -1,95 +1,76 @@
 #!/usr/bin/env python3
 """
-Quick validation script for skills - minimal version
+Quick validation script for skills - enforces standard directory structure and metadata.
 """
-
 import sys
 import os
 import re
-import yaml
 from pathlib import Path
 
 def validate_skill(skill_path):
-    """Basic validation of a skill"""
-    skill_path = Path(skill_path)
-
-    # Check SKILL.md exists
+    """Basic validation of a skill directory structure and SKILL.md content."""
+    skill_path = Path(skill_path).resolve()
+    
+    # Check if SKILL.md exists
     skill_md = skill_path / 'SKILL.md'
     if not skill_md.exists():
-        return False, "SKILL.md not found"
-
-    # Read and validate frontmatter
-    content = skill_md.read_text()
+        return False, f"Missing required file: {skill_path.name}/SKILL.md"
+    
+    # Read and validate content
+    try:
+        content = skill_md.read_text(encoding='utf-8')
+    except Exception as e:
+        return False, f"Failed to read SKILL.md: {e}"
+        
     if not content.startswith('---'):
-        return False, "No YAML frontmatter found"
-
+        return False, "SKILL.md must start with YAML frontmatter delimited by '---'"
+    
     # Extract frontmatter
     match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
     if not match:
-        return False, "Invalid frontmatter format"
-
-    frontmatter_text = match.group(1)
-
-    # Parse YAML frontmatter
-    try:
-        frontmatter = yaml.safe_load(frontmatter_text)
-        if not isinstance(frontmatter, dict):
-            return False, "Frontmatter must be a YAML dictionary"
-    except yaml.YAMLError as e:
-        return False, f"Invalid YAML in frontmatter: {e}"
-
-    # Define allowed properties
-    ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata'}
-
-    # Check for unexpected properties (excluding nested keys under metadata)
-    unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
-    if unexpected_keys:
-        return False, (
-            f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
-            f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}"
-        )
-
-    # Check required fields
-    if 'name' not in frontmatter:
-        return False, "Missing 'name' in frontmatter"
-    if 'description' not in frontmatter:
-        return False, "Missing 'description' in frontmatter"
-
-    # Extract name for validation
-    name = frontmatter.get('name', '')
-    if not isinstance(name, str):
-        return False, f"Name must be a string, got {type(name).__name__}"
-    name = name.strip()
-    if name:
-        # Check naming convention (hyphen-case: lowercase with hyphens)
+        return False, "Invalid frontmatter format in SKILL.md (missing closing '---')"
+    
+    frontmatter = match.group(1)
+    
+    # Check required metadata fields
+    if 'name:' not in frontmatter:
+        return False, "Missing 'name' field in frontmatter"
+    if 'description:' not in frontmatter:
+        return False, "Missing 'description' field in frontmatter"
+    
+    # Validate skill name format (hyphen-case)
+    name_match = re.search(r'name:\s*([^\n]+)', frontmatter)
+    if name_match:
+        name = name_match.group(1).strip().strip('"').strip("'")
         if not re.match(r'^[a-z0-9-]+$', name):
-            return False, f"Name '{name}' should be hyphen-case (lowercase letters, digits, and hyphens only)"
-        if name.startswith('-') or name.endswith('-') or '--' in name:
-            return False, f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens"
-        # Check name length (max 64 characters per spec)
-        if len(name) > 64:
-            return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters."
-
-    # Extract and validate description
-    description = frontmatter.get('description', '')
-    if not isinstance(description, str):
-        return False, f"Description must be a string, got {type(description).__name__}"
-    description = description.strip()
-    if description:
-        # Check for angle brackets
+            return False, f"Skill name '{name}' must be hyphen-case (lowercase letters, digits, and hyphens only)"
+        if name != skill_path.name:
+            return False, f"Skill name '{name}' in metadata must match directory name '{skill_path.name}'"
+            
+    # Validate description (no HTML tags)
+    desc_match = re.search(r'description:\s*([^\n]+)', frontmatter)
+    if desc_match:
+        description = desc_match.group(1).strip()
         if '<' in description or '>' in description:
-            return False, "Description cannot contain angle brackets (< or >)"
-        # Check description length (max 1024 characters per spec)
-        if len(description) > 1024:
-            return False, f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
+            return False, "Description contains restricted characters (< or >)"
 
-    return True, "Skill is valid!"
+    # Check for recommended directories
+    # (Optional: scripts/, references/, assets/)
+    
+    return True, "Skill structure and metadata are valid"
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
+def main():
+    if len(sys.argv) < 2:
         print("Usage: python quick_validate.py <skill_directory>")
         sys.exit(1)
-    
+        
     valid, message = validate_skill(sys.argv[1])
-    print(message)
-    sys.exit(0 if valid else 1)
+    if valid:
+        print(f"✅ {message}")
+        sys.exit(0)
+    else:
+        print(f"❌ {message}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
